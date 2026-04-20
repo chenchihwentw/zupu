@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Test</title>
+</head>
+<body>
+    <h1>图片上传测试</h1>
+    <input type="file" id="fileInput" accept="image/*">
+    <button onclick="uploadFile()">上传</button>
+    <div id="result"></div>
+
+    <script>
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('请选择文件');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                console.log('开始上传...');
+                const response = await fetch('http://localhost:3001/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log('响应状态:', response.status);
+                const data = await response.json();
+                console.log('响应数据:', data);
+                
+                document.getElementById('result').innerHTML = `
+                    <h3>上传成功!</h3>
+                    <p>URL: ${data.url}</p>
+                    <p>文件名：${data.filename}</p>
+                    <img src="http://localhost:3001${data.url}" style="max-width: 300px;">
+                `;
+            } catch (error) {
+                console.error('上传失败:', error);
+                document.getElementById('result').innerHTML = `<p style="color: red;">上传失败：${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

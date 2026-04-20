@@ -1,0 +1,39 @@
+[
+  {
+    "id": "1",
+    "name": "爷爷 (Grandfather)",
+    "gender": "male",
+    "spouses": ["2"],
+    "children": ["3"]
+  },
+  {
+    "id": "2",
+    "name": "奶奶 (Grandmother)",
+    "gender": "female",
+    "spouses": ["1"],
+    "children": ["3"]
+  },
+  {
+    "id": "3",
+    "name": "爸爸 (Father)",
+    "gender": "male",
+    "parents": ["1", "2"],
+    "spouses": ["4"],
+    "children": ["5"]
+  },
+  {
+    "id": "4",
+    "name": "妈妈 (Mother)",
+    "gender": "female",
+    "spouses": ["3"],
+    "children": ["5"]
+  },
+  {
+    "id": "5",
+    "name": "我 (Me)",
+    "gender": "male",
+    "parents": ["3", "4"],
+    "spouses": [],
+    "children": []
+  }
+]

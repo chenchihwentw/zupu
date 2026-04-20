@@ -1,0 +1,18 @@
+{
+  "name": "zupu",
+  "version": "1.0.0",
+  "description": "Family Tree Application",
+  "main": "server.cjs",
+  "scripts": {
+    "install-all": "npm install && cd family-tree-app && npm install",
+    "build": "cd family-tree-app && npm install && npm run build",
+    "start": "node family-tree-app/server.cjs",
+    "dev": "cd family-tree-app && npm run dev"
+  },
+  "dependencies": {
+    "axios": "^1.13.2",
+    "csv-parser": "^3.2.0",
+    "form-data": "^4.0.5",
+    "multer": "^2.0.2"
+  }
+}

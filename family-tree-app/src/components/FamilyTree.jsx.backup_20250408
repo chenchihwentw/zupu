@@ -1,0 +1,1242 @@
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import FamilyMember from './FamilyMember';
+import EditMemberModal from './EditMemberModal';
+import AddMemberModal from './AddMemberModal';
+import AddRelativeModal from './AddRelativeModal';
+import CreateFamilyModal from './CreateFamilyModal';
+import axios from 'axios';
+import Xarrow, { Xwrapper } from 'react-xarrows';
+import '../Tree.css';
+
+const FamilyTree = () => {
+  const [searchParams] = useSearchParams();
+  const { hasPermission, user } = useAuth();
+  const { isTraditional } = useLanguage();  // 使用 Context 中的語言設定
+  const [family, setFamily] = useState([]);
+  const [marriages, setMarriages] = useState([]);
+  const [editingMember, setEditingMember] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddRelativeModal, setShowAddRelativeModal] = useState(false);
+  const [baseMember, setBaseMember] = useState(null);
+  const [relativeType, setRelativeType] = useState(null);
+  // ... existing code ...
+  // const [showImportModal, setShowImportModal] = useState(false);  // 已移至 menu bar
+  // const [csvFile, setCsvFile] = useState(null);
+  // const [importResult, setImportResult] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // 家族基本信息
+  const [familyInfo, setFamilyInfo] = useState(null);
+  
+  // 視角切換相關狀態
+  const [currentFamilyId, setCurrentFamilyId] = useState(null);
+  const [viewAsMemberId, setViewAsMemberId] = useState(null);
+  const [highlightedMemberId, setHighlightedMemberId] = useState(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionMessage, setTransitionMessage] = useState('');
+  const [viewContext, setViewContext] = useState(null);
+  const [canCreateFamily, setCanCreateFamily] = useState(false);
+  const [viewMember, setViewMember] = useState(null); // Store view member when API returns 404
+  const [canEditFamily, setCanEditFamily] = useState(false);  // ✅ 新增：動態權限檢查
+  
+  // 創建家族對話框相關狀態
+  const [showCreateFamilyModal, setShowCreateFamilyModal] = useState(false);
+  const [pendingRelativeType, setPendingRelativeType] = useState(null);
+  const [pendingBaseMember, setPendingBaseMember] = useState(null);
+  const [newFamilySurname, setNewFamilySurname] = useState('');
+  const [newFamilyAncestralHome, setNewFamilyAncestralHome] = useState('');
+  const [newFamilyHallName, setNewFamilyHallName] = useState('');
+  const [newFamilyName, setNewFamilyName] = useState('');
+  
+  // ... existing code ...
+  // 家族合併對話框狀態（已移至 FamilyManagement 頁面，此處移除）
+  // const [showFamilyMergeModal, setShowFamilyMergeModal] = useState(false);
+  
+  // Fetch family data using new auto-determine API
+  const fetchFamilyData = async (includeRelated = false, viewMemberId = null, familyId = null) => {
+    setLoading(true);
+    setError(null);
+
+    const token = localStorage.getItem('token');
+    // ✅ 如果有傳遞familyId,則使用該參數
+    const url = `http://localhost:3001/api/my-family-tree?t=${Date.now()}${includeRelated ? '&include_related=true' : ''}${viewMemberId ? `&view_member_id=${viewMemberId}` : ''}${familyId ? `&family_id=${familyId}` : ''}`;
+    
+    console.log('[FamilyTree] Fetching data with family_id:', familyId || 'auto-detect');
+    
+    try {
+      const res = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const { family_info, members, view_context, notice } = res.data;
+      
+      setFamily(members || []);
+      setFamilyInfo(family_info);
+      setViewContext(view_context);
+      setCurrentFamilyId(family_info?.id);
+      // ✅ 動態檢查當前家族的權限
+      setCanEditFamily(hasPermission('family_admin', family_info?.id));
+      setCanCreateFamily(view_context?.can_create_family || false);
+      
+      if (notice) {
+        setTransitionMessage(notice);
+        setIsTransitioning(true);
+        setTimeout(() => setIsTransitioning(false), 5000);
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      const errorData = err.response?.data;
+      if (errorData?.canCreateFamily || errorData?.canCreateMember) {
+        setCanCreateFamily(true);
+        setError(errorData.error || '請創建您的家族');
+        // Store view member info for display even when no family found
+        if (errorData?.view_context?.view_member_id) {
+          setViewMember({
+            id: errorData.view_context.view_member_id,
+            name: errorData.view_context.view_member_name,
+            canCreateFamily: true
+          });
+        }
+      } else {
+        setError("Failed to load family data: " + (err.message || 'Unknown error'));
+      }
+      setFamily([]);
+      setLoading(false);
+    }
+  };
+
+  // Fetch marriages data
+  const fetchMarriages = () => {
+    axios.get('/api/marriages')
+      .then(res => {
+        setMarriages(res.data || []);
+      })
+      .catch(err => {
+        console.error('Failed to load marriages:', err);
+      });
+  };
+
+  useEffect(() => {
+    // ✅ 監聽家族切換事件
+    const handleFamilyChange = (event) => {
+      const newFamilyId = event.detail.familyId;
+      console.log('[FamilyTree] 家族切換:', newFamilyId);
+      // 重新加載家族數據
+      fetchFamilyData(true, null, newFamilyId);
+    };
+    
+    window.addEventListener('familyChange', handleFamilyChange);
+    
+    fetchFamilyData(true);  // 初始加載時包含關聯成員（配偶、父母、子女）
+    fetchMarriages();
+    
+    // 處理 URL 中的 highlight 參數
+    const highlightParam = searchParams.get('highlight');
+    if (highlightParam) {
+      console.log('URL highlight param:', highlightParam);
+      // 延遲設置高亮，確保數據已載入
+      setTimeout(() => {
+        setHighlightedMemberId(highlightParam);
+        // 滾動到該成員
+        const element = document.getElementById(highlightParam);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // 3 秒後移除高亮
+          setTimeout(() => {
+            setHighlightedMemberId(null);
+          }, 3000);
+        }
+      }, 500);
+    }
+    
+    // 清理監聽器
+    return () => {
+      window.removeEventListener('familyChange', handleFamilyChange);
+    };
+  }, []);
+
+  const handleAddMemberFromModal = async (newMember) => {
+    try {
+      // 使用當前家族ID
+      const memberWithFamily = {
+        ...newMember,
+        primaryFamily: newMember.primaryFamily || currentFamilyId,
+        family_id: newMember.family_id || currentFamilyId,
+        families: newMember.families || [currentFamilyId]
+      };
+      
+      await axios.post('/api/family', memberWithFamily);
+      
+      // Update spouse relationship if needed
+      const spouseId = newMember.spouses && newMember.spouses.length > 0 ? newMember.spouses[0] : null;
+      if (spouseId) {
+        const spouse = family.find(m => m.id === spouseId);
+        if (spouse) {
+          const updatedSpouse = {
+            ...spouse,
+            spouses: [...(spouse.spouses || []), newMember.id]
+          };
+          await axios.put(`/api/family/${spouse.id}`, updatedSpouse);
+        }
+      }
+      
+      setShowAddModal(false);
+      fetchFamilyData(true);  // 刷新時包含關聯成員
+    } catch (err) {
+      console.error("Add failed:", err);
+      alert("Add failed: " + err.message);
+    }
+  };
+
+  // Handle adding relative based on existing member
+  const handleAddRelative = (member, type) => {
+    // Check if member needs to create a family first (when adding parent and member has no family)
+    const memberHasFamily = member.family_tree_id || member.family_id || member.primaryFamily;
+    
+    if (type === 'parent' && !memberHasFamily) {
+      // Need to create family first
+      setPendingBaseMember(member);
+      setPendingRelativeType(type);
+      setNewFamilySurname(member.name?.charAt(0) || '');
+      setNewFamilyName(member.name + '家族');
+      setShowCreateFamilyModal(true);
+      return;
+    }
+    
+    setBaseMember(member);
+    setRelativeType(type);
+    setShowAddRelativeModal(true);
+  };
+  
+  // Handle creating family before adding relative
+  const handleCreateFamilyAndContinue = async () => {
+    try {
+      // Get current user info for created_by
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Create family tree first
+      const familyData = {
+        id: `family_${pendingBaseMember.id}_${Date.now()}`,
+        name: newFamilyName,
+        surname: newFamilySurname,
+        ancestral_home: newFamilyAncestralHome,
+        hall_name: newFamilyHallName,
+        created_by: currentUser.id || user?.id,
+        description: `${newFamilyName}，${newFamilySurname}氏宗族`,
+        is_public: false
+      };
+      
+      await axios.post('/api/family-trees', familyData);
+      
+      // Update the member with new family
+      const updatedMember = {
+        ...pendingBaseMember,
+        family_tree_id: familyData.id,
+        primaryFamily: familyData.id,
+        family_id: familyData.id
+      };
+      await axios.put(`/api/family/${pendingBaseMember.id}`, updatedMember);
+      
+      // Close family modal and open add relative modal
+      setShowCreateFamilyModal(false);
+      setBaseMember(updatedMember);
+      setRelativeType(pendingRelativeType);
+      setShowAddRelativeModal(true);
+      
+      // Clear pending state
+      setPendingBaseMember(null);
+      setPendingRelativeType(null);
+      
+      // Refresh data
+      fetchFamilyData(true);  // 刷新時包含關聯成員
+    } catch (err) {
+      console.error("Create family failed:", err);
+      alert("創建家族失敗: " + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleSaveRelative = async (newMember) => {
+    try {
+      // 根據關係類型決定新成員的家族歸屬
+      let memberWithFamily = { ...newMember };
+      
+      if (relativeType === 'parent') {
+        // 添加父母時，父母應歸屬到子女的原生家族
+        // ✅ 使用子女的 family_tree_id 而非生成臨時ID
+        const parentFamilyId = baseMember?.family_tree_id || currentFamilyId;
+        memberWithFamily.family_tree_id = parentFamilyId;
+        memberWithFamily.primaryFamily = parentFamilyId;
+        memberWithFamily.family_id = parentFamilyId;
+        memberWithFamily.families = [parentFamilyId];
+      } else if (relativeType === 'child' || relativeType === 'sibling') {
+        // 子女和兄弟姐妹繼承 baseMember 的家族
+        // ✅ 添加 family_tree_id（之前缺失）
+        memberWithFamily.family_tree_id = baseMember?.family_tree_id || currentFamilyId;
+        memberWithFamily.primaryFamily = baseMember?.primaryFamily || currentFamilyId;
+        memberWithFamily.family_id = baseMember?.family_id || currentFamilyId;
+        // ✅ 繼承整個 families 數組而非只是 primaryFamily
+        memberWithFamily.families = baseMember?.families || [baseMember?.primaryFamily || currentFamilyId];
+      } else if (relativeType === 'spouse') {
+        // 配偶有自己的原生家族ID（暫時生成，後續需優化讓用戶選擇）
+        const spouseNativeFamilyId = `family_${newMember.id}_native`;
+        memberWithFamily.family_tree_id = spouseNativeFamilyId;  // ✅ 配偶的原生家族
+        memberWithFamily.primaryFamily = spouseNativeFamilyId;
+        memberWithFamily.family_id = spouseNativeFamilyId;
+        // ✅ 配偶的families包含自己的原生家族 + baseMember的原生家族（雙家族視角）
+        memberWithFamily.families = [
+          spouseNativeFamilyId,
+          baseMember?.family_tree_id || currentFamilyId
+        ];
+        
+        // ✅ 【重要】姻親家族的管理員應該是配偶本人（蘇氏），而不是當前操作者（李美玲）
+        // 如果配偶成員已有 user_id（已註冊用戶），後端會自動授權
+        // 如果配偶成員沒有 user_id，則記錄 founder_member_id，等待後續關聯
+        // 這裏不傳遞當前操作者的 user_id，避免錯誤授權
+        
+        // ✅ 【Phase 2.3】不再手動創建 family_trees，改由後端自動創建
+        // 移除手動調用 POST /api/family-trees，讓後端自動處理
+      }
+      
+      await axios.post('/api/family', memberWithFamily);
+      
+      // Update relationships based on type
+      if (baseMember) {
+        const updatedBaseMember = { ...baseMember };
+        
+        switch (relativeType) {
+          case 'parent':
+            // Add new member as parent of base member
+            updatedBaseMember.parents = [...(updatedBaseMember.parents || []), memberWithFamily.id];
+            // ✅ 設置 father_id (假設新成員是父親)
+            updatedBaseMember.father_id = memberWithFamily.id;
+            // ✅ 重要：不改變 baseMember 的 primaryFamily/family_id/families
+            // 這些應該保持不變，以維持原有的家族歸屬
+            await axios.put(`/api/family/${baseMember.id}`, updatedBaseMember);
+            break;
+            
+          case 'child':
+            // Add new member as child of base member (new member's parents include base member)
+            // This is already handled in AddRelativeModal
+            break;
+            
+          case 'spouse':
+            // Add spouse relationship both ways
+            updatedBaseMember.spouses = [...(updatedBaseMember.spouses || []), memberWithFamily.id];
+            // ✅ 互相添加 families（配偶的原生家族加入baseMember）
+            const spouseNativeFamilyId = memberWithFamily.family_tree_id;
+            if (spouseNativeFamilyId && !updatedBaseMember.families?.includes(spouseNativeFamilyId)) {
+              updatedBaseMember.families = Array.from(
+                new Set([...(updatedBaseMember.families || []), spouseNativeFamilyId])
+              );
+            }
+            
+            // ✅ Step 1: 創建婚妻記錄
+            await axios.post('/api/marriages', {
+              husband_id: baseMember.id,
+              wife_id: memberWithFamily.id
+            });
+            
+            // ✅ Step 2: 創建第一個配偶關係 (baseMember → 新配偶)
+            await axios.post('/api/member-spouses', {
+              member_id: baseMember.id,
+              spouse_member_id: memberWithFamily.id
+            });
+            
+            // ✅ Step 3: 創建第二個配偶關係 (新配偶 → baseMember)
+            await axios.post('/api/member-spouses', {
+              member_id: memberWithFamily.id,
+              spouse_member_id: baseMember.id
+            });
+            
+            // ✅ Step 4: 更新baseMember
+            await axios.put(`/api/family/${baseMember.id}`, updatedBaseMember);
+            
+            // ✅ Step 5: 同步更新新配偶的spouses
+            memberWithFamily.spouses = [baseMember.id];
+            await axios.put(`/api/family/${memberWithFamily.id}`, memberWithFamily);
+            break;
+            
+          case 'sibling':
+            // Siblings share parents, already handled in AddRelativeModal
+            break;
+            
+          default:
+            break;
+        }
+      }
+      
+      setShowAddRelativeModal(false);
+      setBaseMember(null);
+      setRelativeType(null);
+      fetchFamilyData(true);  // 刷新時包含關聯成員
+    } catch (err) {
+      console.error("Add relative failed:", err);
+      alert("Add relative failed: " + err.message);
+    }
+  };
+
+  // 處理視角切換 - 切換到當前成員自己的家族視角
+  const handleViewPerspective = async (member) => {
+    console.log('🔄 點擊用戶視角按鈕:', member);
+    console.log('👤 成員信息:', member.id, member.name, member.family_tree_id);
+    
+    // 保存視角信息到 localStorage，供其他頁面使用
+    localStorage.setItem('currentViewMemberId', member.id);
+    localStorage.setItem('currentViewMemberName', member.name);
+    
+    // 開始過渡動畫
+    setIsTransitioning(true);
+    setTransitionMessage(`正在切換至${member.name}的家族視角...`);
+    
+    // 淡出效果
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // 使用新的API，傳入視角成員ID
+    console.log('📡 調用 fetchFamilyData(true, ' + member.id + ')');
+    await fetchFamilyData(true, member.id);
+    
+    // 切換到當前成員自己的家族視角
+    setViewAsMemberId(member.id);
+    setHighlightedMemberId(member.id);
+    
+    console.log('✅ 視角切換完成');
+    
+    // 淡入效果
+    setTimeout(() => {
+      setIsTransitioning(false);
+      setTransitionMessage(`已切換至${member.name}的家族視角`);
+      
+      // 自動滾動到視角成員
+      setTimeout(() => {
+        const element = document.getElementById(member.id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500);
+      
+      // 2秒後清除提示
+      setTimeout(() => {
+        setTransitionMessage('');
+      }, 2000);
+    }, 300);
+  };
+
+  // 重置視角到當前用戶家族
+  const handleResetPerspective = () => {
+    // 重新加載數據，不包含關聯家族
+    fetchFamilyData(false, null);
+    
+    setViewAsMemberId(null);
+    setHighlightedMemberId(null);
+    setTransitionMessage('已返回我的家族視角');
+    setTimeout(() => setTransitionMessage(''), 2000);
+  };
+
+  // 獲取當前視角下的家族成員列表
+  // 檢查兩個成員是否已離婚
+  const isDivorced = (memberId1, memberId2) => {
+    return marriages.some(m => 
+      ((m.husband_id === memberId1 && m.wife_id === memberId2) ||
+       (m.husband_id === memberId2 && m.wife_id === memberId1)) &&
+      m.is_divorced === 1
+    );
+  };
+
+  const getCurrentFamilyMembers = () => {
+    // 如果沒有指定視角，返回當前家族的成員
+    if (!viewAsMemberId) {
+      return family.filter(m => {
+        // 優先使用 family_tree_id，然後是 family_id 或 primaryFamily
+        const mFamilyId = m.family_tree_id || m.family_id || m.primaryFamily;
+        return mFamilyId === currentFamilyId;
+      });
+    }
+    
+    // 找到當前視角的成員
+    const viewMember = family.find(m => m.id === viewAsMemberId);
+    if (!viewMember) return family;
+    
+    // 獲取該成員的家族歸屬
+    const memberFamilyId = viewMember.family_id || viewMember.primaryFamily || 'default';
+    
+    // 獲取視角成員的父母和子女ID列表
+    const viewMemberParents = viewMember.parents || [];
+    const viewMemberChildren = family.filter(m => m.parents?.includes(viewMember.id)).map(m => m.id);
+    const relatedIds = [...viewMemberParents, ...viewMemberChildren];
+    
+    // 返回同一家族的所有成員，以及與該家族成員有聯姻關係的成員（姻親），以及父母和子女
+    const result = family.filter(m => {
+      const mFamilyId = m.family_id || m.primaryFamily || 'default';
+      
+      // 同一家族的成員
+      if (mFamilyId === memberFamilyId) return true;
+      
+      // 或者是視角成員的父母或子女
+      if (relatedIds.includes(m.id)) return true;
+      
+      // 或者是姻親（配偶是當前家族成員，且未離婚）
+      const hasSpouseInCurrentFamily = m.spouses?.some(spouseId => {
+        const spouse = family.find(s => s.id === spouseId);
+        if (!spouse) return false;
+        const spouseFamilyId = spouse.family_id || spouse.primaryFamily || 'default';
+        // 檢查是否已離婚，如果離婚則不顯示
+        if (isDivorced(m.id, spouseId)) {
+          return false;
+        }
+        return spouseFamilyId === memberFamilyId;
+      });
+      
+      return hasSpouseInCurrentFamily;
+    });
+    
+    return result;
+  };
+
+  // 判斷成員是否為姻親（在當前家族中但非原生）
+  const isInLawMember = (member) => {
+    // 獲取當前家族ID
+    const currentFamilyId = getCurrentFamilyId();
+    const memberFamilyId = member.family_id || member.primaryFamily;
+    
+    // 如果成員屬於當前家族，不是姻親
+    if (memberFamilyId === currentFamilyId) {
+      return false;
+    }
+    
+    // 檢查是否與當前家族成員有配偶關係（配偶是姻親）
+    const hasSpouseInCurrentFamily = member.spouses?.some(spouseId => {
+      const spouse = family.find(m => m.id === spouseId);
+      if (!spouse) return false;
+      const spouseFamilyId = spouse.family_id || spouse.primaryFamily;
+      return spouseFamilyId === currentFamilyId;
+    });
+    
+    return hasSpouseInCurrentFamily;
+  };
+
+  // 獲取當前家族ID
+  const getCurrentFamilyId = () => {
+    if (!viewAsMemberId) return currentFamilyId;
+    const viewMember = family.find(m => m.id === viewAsMemberId);
+    if (!viewMember) return currentFamilyId;
+    return viewMember.family_id || viewMember.primaryFamily || currentFamilyId;
+  };
+
+  const handleUpdateMember = (updatedMember) => {
+    console.log("Updating member in FamilyTree:", updatedMember);
+    axios.put(`/api/family/${updatedMember.id}`, updatedMember)
+      .then(async () => {
+        const oldMember = family.find(m => m.id === updatedMember.id);
+        const oldSpouseId = oldMember.spouses && oldMember.spouses.length > 0 ? oldMember.spouses[0] : null;
+        const newSpouseId = updatedMember.spouses && updatedMember.spouses.length > 0 ? updatedMember.spouses[0] : null;
+
+        if (oldSpouseId !== newSpouseId) {
+          if (oldSpouseId) {
+            const oldSpouse = family.find(m => m.id === oldSpouseId);
+            if (oldSpouse) {
+              const updatedOldSpouse = {
+                ...oldSpouse,
+                spouses: oldSpouse.spouses.filter(id => id !== updatedMember.id)
+              };
+              await axios.put(`/api/family/${oldSpouseId}`, updatedOldSpouse);
+            }
+          }
+          if (newSpouseId) {
+            const newSpouse = family.find(m => m.id === newSpouseId);
+            if (newSpouse) {
+              const currentSpouses = newSpouse.spouses || [];
+              if (!currentSpouses.includes(updatedMember.id)) {
+                const updatedNewSpouse = {
+                  ...newSpouse,
+                  spouses: [...currentSpouses, updatedMember.id]
+                };
+                await axios.put(`/api/family/${newSpouseId}`, updatedNewSpouse);
+              }
+            }
+          }
+        }
+        setEditingMember(null);
+        fetchFamilyData(true);  // 刷新時包含關聯成員
+      })
+      .catch(err => {
+        console.error("Update failed:", err);
+        alert("Update failed: " + err.message);
+      });
+  };
+
+  const handleDeleteMember = (memberId) => {
+    if (!window.confirm(isTraditional ? '確定要刪除此成員嗎？' : '确定要删除此成员吗？')) return;
+    axios.delete(`/api/family/${memberId}`)
+      .then(() => {
+        fetchFamilyData(true);  // 刷新時包含關聯成員
+        setEditingMember(null);
+      })
+      .catch(err => {
+        console.error("Delete failed:", err);
+        alert("Delete failed, please try again.");
+        fetchFamilyData(true);  // 刷新時包含關聯成員
+      });
+  };
+
+
+  // ... existing code ...
+  // handleCsvImport 已移至 menu bar（DbMaintenance 或新的 AdminTools 組件）
+
+  // Tree Building Logic - 基於當前視角構建樹
+  const buildTree = () => {
+    const currentFamilyMembers = getCurrentFamilyMembers();
+    const currentFamilyId = getCurrentFamilyId();
+    const visited = new Set();
+    const forest = [];
+    
+    // 調試輸出（如需調試可取消註釋）
+    // console.log('=== buildTree 調試 ===');
+    // console.log('currentFamilyId:', currentFamilyId);
+    // console.log('viewAsMemberId:', viewAsMemberId);
+    // console.log('currentFamilyMembers count:', currentFamilyMembers.length);
+
+    const processNode = (memberId) => {
+      if (visited.has(memberId)) return null;
+      visited.add(memberId);
+      
+      // 優先從當前家族成員中查找
+      let member = currentFamilyMembers.find(m => m.id === memberId);
+      
+      // 如果不在當前家族，但可能是姻親，從全部成員中查找
+      if (!member) {
+        member = family.find(m => m.id === memberId);
+        if (!member) return null;
+      }
+
+      const node = {
+        member: member,
+        spouses: [],
+        children: []
+      };
+
+      // 處理配偶 - 包括當前家族和姻親（排除已離婚的）
+      if (member.spouses && member.spouses.length > 0) {
+        member.spouses.forEach(spouseId => {
+          // 檢查是否已離婚，如果離婚則跳過
+          if (isDivorced(member.id, spouseId)) {
+            return;
+          }
+          if (!visited.has(spouseId)) {
+            visited.add(spouseId);
+            // 配偶可能是當前家族成員或姻親
+            let spouse = currentFamilyMembers.find(m => m.id === spouseId);
+            if (!spouse) {
+              spouse = family.find(m => m.id === spouseId);
+            }
+            if (spouse) node.spouses.push(spouse);
+          }
+        });
+      }
+
+      // 計算 parentIds 時，只包含當前成員和未離婚的配偶
+      // 這樣可以避免已離婚的 parent 被錯誤地包含在內
+      const spouseIds = node.spouses.map(s => s.id);
+      const parentIds = [member.id, ...spouseIds];
+      
+      // console.log(`processNode ${member.name}: parentIds=${JSON.stringify(parentIds)}`);
+      // console.log(`processNode ${member.name} (${member.id}): parents=${JSON.stringify(member.parents)}`);
+
+      
+      // 查找子女 - 子女必須包含當前成員作為 parent
+      const children = family.filter(m => {
+        if (!m.parents || m.parents.length === 0) return false;
+        // 子女必須包含當前成員的 ID 作為 parent
+        return m.parents.includes(member.id);
+      });
+      
+      // console.log(`processNode ${member.name}: found ${children.length} children:`, children.map(c => c.name));
+
+      // 按出生年份排序子女（年長的在左邊）
+      children.sort((a, b) => (a.birth_year || 0) - (b.birth_year || 0));
+
+      children.forEach(child => {
+        const childNode = processNode(child.id);
+        if (childNode) node.children.push(childNode);
+      });
+
+      return node;
+    };
+
+    // 找到當前家族的根節點（排除姻親和沒有父母但有配偶的成員）
+    const roots = currentFamilyMembers.filter(member => {
+      // 姻親不能作為根節點
+      if (isInLawMember(member)) return false;
+      
+      // 如果沒有父母，需要進一步檢查
+      if (!member.parents || member.parents.length === 0) {
+        // 如果有配偶在當前家族，且配偶有父母在當前家族，則該成員不是根節點
+        if (member.spouses && member.spouses.length > 0) {
+          for (const spouseId of member.spouses) {
+            const spouse = currentFamilyMembers.find(s => s.id === spouseId);
+            if (spouse && spouse.parents && spouse.parents.length > 0) {
+              const spouseHasParentInCurrentFamily = spouse.parents.some(pid => 
+                currentFamilyMembers.some(m => m.id === pid)
+              );
+              if (spouseHasParentInCurrentFamily) {
+                // 配偶有父母在當前家族，所以該成員不作為根節點
+                return false;
+              }
+            }
+          }
+        }
+        // 沒有父母且配偶也沒有父母（或沒有配偶），作為根節點
+        return true;
+      }
+      
+      // 檢查父母是否在当前家族中
+      const hasParentInCurrentFamily = member.parents.some(pid => 
+        currentFamilyMembers.some(m => m.id === pid)
+      );
+      return !hasParentInCurrentFamily;
+    });
+    
+    // console.log('roots:', roots.map(m => ({ id: m.id, name: m.name })));
+    // console.log('roots:', roots.map(m => ({ id: m.id, name: m.name })));
+
+    // 如果指定了視角成員，顯示完整家族樹但高亮該成員
+    if (viewAsMemberId) {
+      const viewMember = currentFamilyMembers.find(m => m.id === viewAsMemberId);
+      if (viewMember) {
+        // 檢查該成員是否有父母在当前家族中
+        const hasParentInCurrentFamily = viewMember.parents?.some(pid => 
+          currentFamilyMembers.some(m => m.id === pid)
+        );
+        
+        if (!hasParentInCurrentFamily) {
+          // 作為根節點處理
+          const node = processNode(viewMember.id);
+          if (node) forest.push(node);
+        } else {
+          // 找到最頂層的祖先，從祖先開始構建完整樹
+          roots.forEach(root => {
+            const node = processNode(root.id);
+            if (node) forest.push(node);
+          });
+        }
+      }
+    } else {
+      roots.sort((a, b) => (a.birth_year || 0) - (b.birth_year || 0));
+      roots.forEach(root => {
+        const node = processNode(root.id);
+        if (node) forest.push(node);
+      });
+    }
+
+    return forest;
+  };
+
+  const renderTreeNode = (node) => {
+    const isHighlighted = node.member.id === highlightedMemberId;
+    
+    return (
+      <div key={node.member.id} className="tree-node" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0' }}>
+        <div className="node-content" style={{ display: 'flex', gap: '5px', marginBottom: '40px', alignItems: 'center', position: 'relative' }}>
+          <div id={node.member.id} className={isHighlighted ? 'highlighted-member' : ''} style={{ position: 'relative' }}>
+            <FamilyMember 
+              member={node.member} 
+              onEdit={canEditFamily ? setEditingMember : null} 
+              onAddRelative={canEditFamily ? handleAddRelative : null}
+              isInLaw={isInLawMember(node.member)}
+              onViewPerspective={handleViewPerspective}
+              isHighlighted={isHighlighted}
+              isTraditional={isTraditional}
+              canEdit={canEditFamily}
+            />
+          </div>
+          {node.spouses.map(spouse => {
+            const isSpouseHighlighted = spouse.id === highlightedMemberId;
+            return (
+              <div key={spouse.id} id={spouse.id} className={isSpouseHighlighted ? 'highlighted-member' : ''} style={{ position: 'relative' }}>
+                <FamilyMember 
+                  member={spouse} 
+                  onEdit={canEditFamily ? setEditingMember : null} 
+                  onAddRelative={canEditFamily ? handleAddRelative : null}
+                  isInLaw={isInLawMember(spouse)}
+                  onViewPerspective={handleViewPerspective}
+                  isHighlighted={isSpouseHighlighted}
+                  isTraditional={isTraditional}
+                  canEdit={canEditFamily}
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {node.children.length > 0 && (
+          <div className="children-container" style={{ display: 'flex', borderTop: '2px solid #ccc', paddingTop: '40px', gap: '10px' }}>
+            {node.children.map(childNode => renderTreeNode(childNode))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const forest = buildTree();
+
+  return (
+    <div className="family-tree-container">
+
+      {/* 過渡動畫遮罩 */}
+      {isTransitioning && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 3000,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            textAlign: 'center',
+            padding: '40px',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+          }}>
+            <div style={{
+              width: '50px',
+              height: '50px',
+              border: '4px solid #f0f0f0',
+              borderTop: '4px solid #1890ff',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 20px'
+            }} />
+            <p style={{ fontSize: '16px', color: '#333', margin: 0 }}>{transitionMessage}</p>
+          </div>
+        </div>
+      )}
+
+      {/* 切換完成提示 */}
+      {!isTransitioning && transitionMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '80px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#52c41a',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '6px',
+          boxShadow: '0 4px 12px rgba(82, 196, 26, 0.4)',
+          zIndex: 2500,
+          animation: 'slideDown 0.3s ease-out',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span>🔄</span>
+          <span>{transitionMessage}</span>
+        </div>
+      )}
+
+      {/* 家族基本信息顯示 */}
+      {familyInfo && (
+        <div style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          padding: '15px 20px',
+          margin: '0 20px 20px',
+          borderRadius: '8px',
+          textAlign: 'center',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        }}>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>
+            {familyInfo.name || familyInfo.surname + '氏家族'}
+          </h2>
+          {familyInfo.ancestral_home && (
+            <p style={{ margin: '0', fontSize: '14px', opacity: 0.9 }}>
+              📍 祖籍：{familyInfo.ancestral_home}
+              {familyInfo.hall_name && ` | 堂號：${familyInfo.hall_name}`}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="header">
+        <h1 style={{ textAlign: 'center' }}>族谱 (Family Tree)</h1>
+        {viewAsMemberId && (
+          <>
+            <div style={{ textAlign: 'center', color: '#666', fontSize: '14px', marginBottom: '10px' }}>
+              當前視角：{family.find(m => m.id === viewAsMemberId)?.name || '未知'}的家族
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '10px' }}>
+              <button 
+                className="reset-view-btn" 
+                onClick={handleResetPerspective}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#faad14',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                🏠 返回默認視角
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+
+
+      {loading && <div style={{ textAlign: 'center', padding: '20px' }}>Loading family data...</div>}
+      {error && (
+        <div style={{ textAlign: 'center', padding: '20px' }}>
+          <div style={{ color: 'red', marginBottom: '15px' }}>Error: {error}</div>
+          {canCreateFamily && viewMember && (
+            <div style={{ 
+              backgroundColor: '#fff7e6', 
+              border: '1px solid #ffd591', 
+              borderRadius: '8px', 
+              padding: '20px', 
+              maxWidth: '500px', 
+              margin: '0 auto' 
+            }}>
+              <p style={{ margin: '0 0 15px 0', color: '#d46b08' }}>
+                ⚠️ {viewMember.name} 还没有创建自己的家族
+              </p>
+              {/* Display member card */}
+              <div style={{ 
+                backgroundColor: 'white', 
+                borderRadius: '8px', 
+                padding: '20px', 
+                marginBottom: '20px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}>
+                <h3 style={{ margin: '0 0 15px 0' }}>{viewMember.name}</h3>
+                <p style={{ color: '#666', margin: '0 0 15px 0' }}>
+                  ID: {viewMember.id}
+                </p>
+                {/* Add relative buttons */}
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <button 
+                    onClick={() => handleAddRelative({ id: viewMember.id, name: viewMember.name }, 'parent')}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#1890ff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    添加父親
+                  </button>
+                  <button 
+                    onClick={() => handleAddRelative({ id: viewMember.id, name: viewMember.name }, 'parent')}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#52c41a',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    添加母親
+                  </button>
+                  <button 
+                    onClick={() => handleAddRelative({ id: viewMember.id, name: viewMember.name }, 'spouse')}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#fa8c16',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    添加配偶
+                  </button>
+                  <button 
+                    onClick={() => handleAddRelative({ id: viewMember.id, name: viewMember.name }, 'child')}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#722ed1',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    添加子女
+                  </button>
+                </div>
+              </div>
+              <button 
+                onClick={() => {/* TODO: Open create family modal */}}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#fa8c16',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                创建我的家族
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!loading && !error && family.length > 0 && (
+        <Xwrapper>
+          <div className="tree" style={{ overflowX: 'auto', padding: '40px', display: 'flex', justifyContent: 'center' }}>
+            {forest.map(rootNode => renderTreeNode(rootNode))}
+          </div>
+          {/* Connections - 顯示當前家族成員及其子女的連線 */}
+          {(() => {
+            const currentFamilyMembers = getCurrentFamilyMembers();
+            const connections = [];
+            const processed = new Set();
+            
+            // 獲取所有在樹中顯示的成員 ID
+            const getAllVisibleMemberIds = (nodes) => {
+              const ids = new Set();
+              nodes.forEach(node => {
+                ids.add(node.member.id);
+                node.spouses.forEach(s => ids.add(s.id));
+                node.children.forEach(c => getAllVisibleMemberIds([c]).forEach(id => ids.add(id)));
+              });
+              return ids;
+            };
+            const visibleMemberIds = getAllVisibleMemberIds(forest);
+            // 只為顯示在樹中的成員創建連線
+            // 獲取所有在樹中顯示的成員
+            const visibleMembers = family.filter(m => visibleMemberIds.has(m.id));
+            
+            // 首先處理視角成員（如果有），確保優先創建其子女連線
+            const sortedMembers = visibleMembers.sort((a, b) => {
+              if (a.id === viewAsMemberId) return -1;
+              if (b.id === viewAsMemberId) return 1;
+              return 0;
+            });
+            sortedMembers.forEach(member => {
+              // 處理當前成員的父母（只包括顯示在樹中的父母）
+              // 首先檢查當前成員是否在 visibleMemberIds 中
+              if (!visibleMemberIds.has(member.id)) {
+                // 成員不在當前 tree 中，跳過
+                return;
+              }
+              
+              if (member.parents && member.parents.length > 0) {
+                member.parents.forEach(parentId => {
+                  // 父母必須顯示在樹中
+                  if (!visibleMemberIds.has(parentId)) {
+                    console.log(`跳過連線 ${member.name} -> ${parentId}: 父母不在 visibleMemberIds 中`);
+                    return;
+                  }
+                  
+                  const parent = family.find(m => m.id === parentId);
+                  const parentFamilyId = parent?.family_id || parent?.primaryFamily;
+                  const currentFamilyId = getCurrentFamilyId();
+                  
+                  // 檢查父母是否已離婚（通過檢查父母與其他 parent 的婚姻狀態）
+                  let shouldSkipConnection = false;
+                  
+                  // 如果當前成員有多個 parents，檢查他們之間的婚姻狀態
+                  if (member.parents.length > 1) {
+                    const otherParents = member.parents.filter(pid => pid !== parentId);
+                    for (const otherParentId of otherParents) {
+                      const otherParent = family.find(m => m.id === otherParentId);
+                      if (otherParent) {
+                        // 檢查這個 parent 和其他 parent 是否已離婚
+                        const areParentsDivorced = isDivorced(parentId, otherParentId);
+                        if (areParentsDivorced) {
+                          // 如果父母已離婚，且這個 parent 不屬於當前家族，則跳過連線
+                          if (parentFamilyId !== currentFamilyId) {
+                            console.log(`跳過連線 ${member.name} -> ${parentId}: 父母已離婚且${parent?.name}不屬於當前家族 (${parentFamilyId} !== ${currentFamilyId})`);
+                            shouldSkipConnection = true;
+                            break;
+                          }
+                        }
+                      }
+                    }
+                  } else if (member.parents.length === 1) {
+                    // 如果只有一個 parent，檢查這個 parent 是否有前配偶（離婚對象）
+                    const parentMarriage = marriages.find(m => 
+                      ((m.husband_id === parentId || m.wife_id === parentId)) &&
+                      m.is_divorced === 1
+                    );
+                    
+                    if (parentMarriage) {
+                      // 找到離婚的另一一方
+                      const exSpouseId = parentMarriage.husband_id === parentId ? parentMarriage.wife_id : parentMarriage.husband_id;
+                      const exSpouse = family.find(m => m.id === exSpouseId);
+                      
+                      const exSpouseFamilyId = exSpouse?.family_id || exSpouse?.primaryFamily;
+                      if (exSpouse && exSpouseFamilyId !== currentFamilyId) {
+                        shouldSkipConnection = true;
+                      } else if (!exSpouse) {
+                        // 前配偶不在系統中，也跳過（避免顯示單親的錯誤連線）
+                        shouldSkipConnection = true;
+                      }
+                    }
+                  }
+                  
+                  if (shouldSkipConnection) {
+                    return;
+                  }
+                  
+                  const key = `${parentId}-${member.id}`;
+                  if (processed.has(key)) return;
+                  processed.add(key);
+                  
+                  connections.push(
+                    <Xarrow
+                      key={`pc-${key}`}
+                      start={parentId}
+                      end={member.id}
+                      color="#1890ff"
+                      strokeWidth={2}
+                      headSize={6}
+                      path="smooth"
+                      startAnchor={{ position: "bottom", offset: { x: 0, y: 0 } }}
+                      endAnchor="top"
+                      zIndex={100}
+                      curveness={0.5}
+                    />
+                  );
+                });
+              }
+              
+              // 處理當前成員的子女（只包括顯示在樹中的，且避免重複）
+              const children = family.filter(m => 
+                m.parents && m.parents.includes(member.id) && visibleMemberIds.has(m.id)
+              );
+              children.forEach(child => {
+                // 檢查是否已經從其他parent創建了連線
+                const existingKey = Array.from(processed).find(k => k.endsWith(`-${child.id}`));
+                if (existingKey) {
+                  return;
+                }
+                
+                // 檢查 start 和 end 是否都在 visibleMemberIds 中
+                if (!visibleMemberIds.has(member.id)) {
+                  return;
+                }
+                
+                const key = `${member.id}-${child.id}`;
+                if (processed.has(key)) {
+                  return;
+                }
+                processed.add(key);
+                
+                connections.push(
+                  <Xarrow
+                    key={`pc-${key}`}
+                    start={member.id}
+                    end={child.id}
+                    color="#1890ff"
+                    strokeWidth={2}
+                    headSize={6}
+                    path="smooth"
+                    startAnchor={{ position: "bottom", offset: { x: 0, y: 0 } }}
+                    endAnchor="top"
+                    zIndex={100}
+                    curveness={0.5}
+                  />
+                );
+              });
+            });
+            
+            return connections;
+          })()}
+        </Xwrapper>
+      )}
+
+      {!loading && !error && family.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '20px' }}>
+          <p>暂无族谱数据，请先导入CSV文件</p>
+        </div>
+      )}
+
+
+
+
+
+      {editingMember && (
+        <EditMemberModal
+          member={editingMember}
+          allMembers={family}
+          onSave={handleUpdateMember}
+          onDelete={handleDeleteMember}
+          onCancel={() => setEditingMember(null)}
+        />
+      )}
+
+      {showAddModal && (
+        <AddMemberModal
+          allMembers={family}
+          onSave={handleAddMemberFromModal}
+          onCancel={() => setShowAddModal(false)}
+        />
+      )}
+
+      {/* Create Family Modal - shown when adding parent to member without family */}
+      {showCreateFamilyModal && pendingBaseMember && (
+        <CreateFamilyModal
+          memberName={pendingBaseMember.name}
+          familyName={newFamilyName}
+          setFamilyName={setNewFamilyName}
+          surname={newFamilySurname}
+          setSurname={setNewFamilySurname}
+          ancestralHome={newFamilyAncestralHome}
+          setAncestralHome={setNewFamilyAncestralHome}
+          hallName={newFamilyHallName}
+          setHallName={setNewFamilyHallName}
+          onSubmit={handleCreateFamilyAndContinue}
+          onCancel={() => {
+            setShowCreateFamilyModal(false);
+            setPendingBaseMember(null);
+            setPendingRelativeType(null);
+          }}
+        />
+      )}
+
+      {showAddRelativeModal && baseMember && (
+        <AddRelativeModal
+          baseMember={baseMember}
+          relativeType={relativeType}
+          allMembers={family}
+          onSave={handleSaveRelative}
+          onCancel={() => {
+            setShowAddRelativeModal(false);
+            setBaseMember(null);
+            setRelativeType(null);
+          }}
+        />
+      )}
+
+
+    </div>
+  );
+};
+
+export default FamilyTree;

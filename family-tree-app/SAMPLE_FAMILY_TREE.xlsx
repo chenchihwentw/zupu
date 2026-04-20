@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+          xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  <Worksheet ss:Name="族谱数据">
+    <Table>
+      <Column ss:Width="60"/>
+      <Column ss:Width="80"/>
+      <Column ss:Width="100"/>
+      <Column ss:Width="60"/>
+      <Column ss:Width="120"/>
+      <Column ss:Width="120"/>
+      <Column ss:Width="150"/>
+      <Column ss:Width="100"/>
+      <Column ss:Width="100"/>
+      <Column ss:Width="150"/>
+      <Column ss:Width="100"/>
+      
+      <Row>
+        <Cell><Data ss:Type="String">item</Data></Cell>
+        <Cell><Data ss:Type="String">姓名</Data></Cell>
+        <Cell><Data ss:Type="String">称谓</Data></Cell>
+        <Cell><Data ss:Type="String">辈称</Data></Cell>
+        <Cell><Data ss:Type="String">出生年月</Data></Cell>
+        <Cell><Data ss:Type="String">去世年月</Data></Cell>
+        <Cell><Data ss:Type="String">通讯地址</Data></Cell>
+        <Cell><Data ss:Type="String">电话</Data></Cell>
+        <Cell><Data ss:Type="String">父辈</Data></Cell>
+        <Cell><Data ss:Type="String">备注</Data></Cell>
+        <Cell><Data ss:Type="String">配偶</Data></Cell>
+      </Row>
+      
+      <Row>
+        <Cell><Data ss:Type="String">a1</Data></Cell>
+        <Cell><Data ss:Type="String">陈兴田</Data></Cell>
+        <Cell><Data ss:Type="String">祖父</Data></Cell>
+        <Cell><Data ss:Type="String">祖父</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">福州台屿乡</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">曾用名陈细俤</Data></Cell>
+        <Cell><Data ss:Type="String">李大妹</Data></Cell>
+      </Row>
+      
+      <Row>
+        <Cell><Data ss:Type="String">a2</Data></Cell>
+        <Cell><Data ss:Type="String">李大妹</Data></Cell>
+        <Cell><Data ss:Type="String">祖母</Data></Cell>
+        <Cell><Data ss:Type="String">祖母</Data></Cell>
+        <Cell><Data ss:Type="String">農1871/7/12</Data></Cell>
+        <Cell><Data ss:Type="String">1955年</Data></Cell>
+        <Cell><Data ss:Type="String">福州上湖乡</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">陈兴田</Data></Cell>
+      </Row>
+      
+      <Row>
+        <Cell><Data ss:Type="String">b01</Data></Cell>
+        <Cell><Data ss:Type="String">陈森铨</Data></Cell>
+        <Cell><Data ss:Type="String">父亲</Data></Cell>
+        <Cell><Data ss:Type="String">父</Data></Cell>
+        <Cell><Data ss:Type="String">農1898/3/5</Data></Cell>
+        <Cell><Data ss:Type="String">1975年8月</Data></Cell>
+        <Cell><Data ss:Type="String">福州台屿乡</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">陈兴田</Data></Cell>
+        <Cell><Data ss:Type="String">曾用名陈依妹</Data></Cell>
+        <Cell><Data ss:Type="String">黄三妹</Data></Cell>
+      </Row>
+      
+      <Row>
+        <Cell><Data ss:Type="String">b02</Data></Cell>
+        <Cell><Data ss:Type="String">黄三妹</Data></Cell>
+        <Cell><Data ss:Type="String">母亲</Data></Cell>
+        <Cell><Data ss:Type="String">母</Data></Cell>
+        <Cell><Data ss:Type="String">1898年</Data></Cell>
+        <Cell><Data ss:Type="String">1980年</Data></Cell>
+        <Cell><Data ss:Type="String">福州虞塘头</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">陈森铨</Data></Cell>
+      </Row>
+      
+      <Row>
+        <Cell><Data ss:Type="String">c01</Data></Cell>
+        <Cell><Data ss:Type="String">陈志明</Data></Cell>
+        <Cell><Data ss:Type="String">本人</Data></Cell>
+        <Cell><Data ss:Type="String">子</Data></Cell>
+        <Cell><Data ss:Type="String">1950年12月3日</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">福州市鼓楼区</Data></Cell>
+        <Cell><Data ss:Type="String">138****1234</Data></Cell>
+        <Cell><Data ss:Type="String">陈森铨</Data></Cell>
+        <Cell><Data ss:Type="String">大学教授</Data></Cell>
+        <Cell><Data ss:Type="String">林美华</Data></Cell>
+      </Row>
+      
+      <Row>
+        <Cell><Data ss:Type="String">c02</Data></Cell>
+        <Cell><Data ss:Type="String">林美华</Data></Cell>
+        <Cell><Data ss:Type="String">妻子</Data></Cell>
+        <Cell><Data ss:Type="String">妻</Data></Cell>
+        <Cell><Data ss:Type="String">1952年农历8月15日</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">福州市台江区</Data></Cell>
+        <Cell><Data ss:Type="String">139****5678</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">医生</Data></Cell>
+        <Cell><Data ss:Type="String">陈志明</Data></Cell>
+      </Row>
+      
+      <Row>
+        <Cell><Data ss:Type="String">d01</Data></Cell>
+        <Cell><Data ss:Type="String">陈小明</Data></Cell>
+        <Cell><Data ss:Type="String">儿子</Data></Cell>
+        <Cell><Data ss:Type="String">孙</Data></Cell>
+        <Cell><Data ss:Type="String">1980年3月</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">北京市朝阳区</Data></Cell>
+        <Cell><Data ss:Type="String">136****9012</Data></Cell>
+        <Cell><Data ss:Type="String">陈志明</Data></Cell>
+        <Cell><Data ss:Type="String">工程师</Data></Cell>
+        <Cell><Data ss:Type="String">王丽娟</Data></Cell>
+      </Row>
+      
+      <Row>
+        <Cell><Data ss:Type="String">d02</Data></Cell>
+        <Cell><Data ss:Type="String">王丽娟</Data></Cell>
+        <Cell><Data ss:Type="String">儿媳</Data></Cell>
+        <Cell><Data ss:Type="String">孙媳</Data></Cell>
+        <Cell><Data ss:Type="String">1982年</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">北京市海淀区</Data></Cell>
+        <Cell><Data ss:Type="String">137****3456</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">教师</Data></Cell>
+        <Cell><Data ss:Type="String">陈小明</Data></Cell>
+      </Row>
+      
+      <Row>
+        <Cell><Data ss:Type="String">e01</Data></Cell>
+        <Cell><Data ss:Type="String">陈晨</Data></Cell>
+        <Cell><Data ss:Type="String">孙子</Data></Cell>
+        <Cell><Data ss:Type="String">曾孙</Data></Cell>
+        <Cell><Data ss:Type="String">2010年</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">北京市朝阳区</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">陈小明</Data></Cell>
+        <Cell><Data ss:Type="String">学生</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+      </Row>
+    </Table>
+  </Worksheet>
+</Workbook>
