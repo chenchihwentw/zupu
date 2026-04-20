@@ -3388,12 +3388,6 @@ app.post('/api/import/csv', upload.single('csvFile'), (req, res) => {
         });
 });
 
-// Handle SPA routing - return index.html for all non-API routes
-if (process.env.NODE_ENV === 'production') {
-  app.get('*all', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-  });
-}
 
 // ========== 尋親啟事 API ==========
 
@@ -4003,6 +3997,13 @@ app.post('/api/family/batch-labels/execute', authenticateToken, async (req, res)
     res.status(500).json({ error: '批量更新失敗: ' + error.message });
   }
 });
+
+// Handle SPA routing - return index.html for all non-API routes
+if (process.env.NODE_ENV === 'production') {
+  app.get('*all', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  });
+}
 
 // Start the server
 const serverPort = process.env.PORT || port;
