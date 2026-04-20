@@ -1085,6 +1085,69 @@ app.post('/api/auth/register-with-invite', async (req, res) => {
     }
 });
 
+// Create New Family Tree and Founder Account
+app.post('/api/family/create', async (req, res) => {
+    const { surname, ancestralHome, hallName, founderName, founderEmail, founderPassword } = req.body;
+    
+    if (!surname || !founderName || !founderEmail || !founderPassword) {
+        return res.status(400).json({ error: '必填欄位缺失' });
+    }
+
+    const familyTreeId = `family_${Date.now()}`;
+    const userId = `user_${Date.now()}`;
+    const memberId = `member_${Date.now()}`;
+    const now = new Date().toISOString();
+
+    try {
+        const passwordHash = await bcrypt.hash(founderPassword, 10);
+
+        // 1. 建立家族樹
+        await new Promise((resolve, reject) => {
+            db.run(`
+                INSERT INTO family_trees (id, name, surname, ancestral_home, hall_name, created_at, updated_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `, [familyTreeId, `${surname}氏家族`, surname, ancestralHome, hallName, now, now], (err) => {
+                if (err) reject(err); else resolve();
+            });
+        });
+
+        // 2. 建立用戶
+        await new Promise((resolve, reject) => {
+            db.run(`
+                INSERT INTO users (id, username, email, password_hash, full_name, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `, [userId, founderEmail, founderEmail, passwordHash, founderName, now], (err) => {
+                if (err) reject(err); else resolve();
+            });
+        });
+
+        // 3. 建立對應成員並與用戶連結
+        await new Promise((resolve, reject) => {
+            db.run(`
+                INSERT INTO members (id, name, surname, family_tree_id, user_id, primaryFamily, families)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `, [memberId, founderName, surname, familyTreeId, userId, familyTreeId, JSON.stringify([familyTreeId])], (err) => {
+                if (err) reject(err); else resolve();
+            });
+        });
+
+        // 4. 授予權限
+        await new Promise((resolve, reject) => {
+            db.run(`
+                INSERT INTO user_family_trees (user_id, family_tree_id, role, joined_at)
+                VALUES (?, ?, ?, ?)
+            `, [userId, familyTreeId, 'family_admin', now], (err) => {
+                if (err) reject(err); else resolve();
+            });
+        });
+
+        res.json({ success: true, familyTreeId, userId, memberId });
+    } catch (err) {
+        console.error('[API/Family/Create] 錯誤:', err);
+        res.status(500).json({ error: '系統錯誤，請稍後再試: ' + err.message });
+    }
+});
+
 // Login endpoint
 app.post('/api/auth/login', async (req, res) => {
     const { email, password, rememberMe } = req.body;
