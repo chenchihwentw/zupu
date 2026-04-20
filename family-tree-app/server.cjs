@@ -3624,7 +3624,13 @@ app.get('/api/my-family-tree', authenticateToken, async (req, res) => {
     });
     
     // 選擇家族的智能邏輯(關鍵!)
-    let familyId = req.query.family_id || req.query.primaryFamily; // 優先使用URL參數，支援多種命名方式
+    let familyId = req.query.family_id || req.query.primaryFamily; // 優先使用URL參數
+    
+    // 保護邏輯：防止前端誤傳 "undefined" 或 "null" 字串
+    if (familyId === 'undefined' || familyId === 'null') {
+      familyId = null;
+    }
+    
     const viewMemberId = req.query.view_member_id;
 
     // 如果沒有傳入 family_id 但有 view_member_id，嘗試根據成員尋找所屬家族
