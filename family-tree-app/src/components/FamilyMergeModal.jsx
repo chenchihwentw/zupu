@@ -18,7 +18,7 @@ const FamilyMergeModal = ({ isOpen, onClose, currentFamilyId, onMergeSuccess }) 
   const fetchFamilies = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3001/api/families/search', {
+      const res = await axios.get('/api/families/search', {
         headers: { Authorization: `Bearer ${token}` }
       });
       // 過濾掉當前家族
@@ -37,7 +37,7 @@ const FamilyMergeModal = ({ isOpen, onClose, currentFamilyId, onMergeSuccess }) 
     
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:3001/api/families/search?keyword=${searchKeyword}`, {
+      const res = await axios.get(`/api/families/search?keyword=${searchKeyword}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setFamilies(res.data.filter(f => f.family_uid !== currentFamilyId));
@@ -59,7 +59,7 @@ const FamilyMergeModal = ({ isOpen, onClose, currentFamilyId, onMergeSuccess }) 
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:3001/api/families/merge', {
+      await axios.post('/api/families/merge', {
         sourceFamilyId: selectedFamily,
         targetFamilyId: currentFamilyId
       }, {

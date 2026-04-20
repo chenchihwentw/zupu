@@ -66,7 +66,7 @@ const FamilyTree = () => {
     setError(null);
 
     const token = localStorage.getItem('token');
-    const url = `http://localhost:3001/api/my-family-tree?t=${Date.now()}${includeRelated ? '&include_related=true' : ''}${viewMemberId ? `&view_member_id=${encodeURIComponent(viewMemberId)}` : ''}${familyId ? `&family_id=${encodeURIComponent(familyId)}` : ''}`;
+    const url = `/api/my-family-tree?t=${Date.now()}${includeRelated ? '&include_related=true' : ''}${viewMemberId ? `&view_member_id=${encodeURIComponent(viewMemberId)}` : ''}${familyId ? `&family_id=${encodeURIComponent(familyId)}` : ''}`;
     
     try {
       const res = await axios.get(url, {
