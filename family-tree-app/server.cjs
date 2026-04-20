@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const AdmZip = require('adm-zip');
 
 const app = express();
 const port = 3001;
@@ -59,6 +60,77 @@ const staticPath = process.env.NODE_ENV === 'production'
   : path.join(__dirname, 'public');
 
 app.use('/public', express.static(path.join(__dirname, 'public')));
+
+// Data Migration API - 可傳入 family.db 或 uploads.zip
+const migrationUpload = multer({ 
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => {
+            const dest = process.env.NODE_ENV === 'production' ? '/app/data' : './';
+            if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+            cb(null, dest);
+        },
+        filename: (req, file, cb) => {
+            if (file.fieldname === 'db') cb(null, 'family.db.new');
+            else if (file.fieldname === 'uploadsZip') cb(null, 'uploads.zip');
+            else cb(null, file.originalname);
+        }
+    })
+});
+
+app.post('/api/admin/migrate-data', migrationUpload.fields([{ name: 'db', maxCount: 1 }, { name: 'uploadsZip', maxCount: 1 }]), async (req, res) => {
+    const secret = req.headers['x-migration-secret'];
+    if (!process.env.MIGRATION_SECRET || !secret || secret !== process.env.MIGRATION_SECRET) {
+        return res.status(403).json({ error: '拒絕訪問：MIGRATION_SECRET 未設定、不正確，或 Header 缺失' });
+    }
+
+    const report = { steps: [] };
+    const dataBaseDir = process.env.NODE_ENV === 'production' ? '/app/data' : '.';
+
+    try {
+        // 1. 處理資料庫檔案
+        if (req.files['db']) {
+            const newDbPath = path.join(dataBaseDir, 'family.db.new');
+            const targetDbPath = path.join(dataBaseDir, 'family.db');
+            
+            // 如果存在，先備份舊的
+            if (fs.existsSync(targetDbPath)) {
+                fs.copyFileSync(targetDbPath, targetDbPath + '.bak');
+                report.steps.push('Created database backup');
+            }
+            
+            // 替換
+            fs.copyFileSync(newDbPath, targetDbPath);
+            fs.unlinkSync(newDbPath);
+            
+            report.steps.push('Database file replaced successfully');
+        }
+
+        // 2. 處理照片壓縮包
+        if (req.files['uploadsZip']) {
+            const zipPath = path.join(dataBaseDir, 'uploads.zip');
+            const targetUploadsDir = path.join(dataBaseDir, 'uploads');
+            
+            if (!fs.existsSync(targetUploadsDir)) {
+                fs.mkdirSync(targetUploadsDir, { recursive: true });
+            }
+            
+            const zip = new AdmZip(zipPath);
+            zip.extractAllTo(targetUploadsDir, true); // true = overwrite
+            
+            fs.unlinkSync(zipPath); // 刪除 zip 檔案
+            report.steps.push('Uploads folder extracted and updated successfully');
+        }
+
+        res.json({ 
+            success: true, 
+            message: '遷移操作已完成！請在 Railway 控制台點擊「Restart」重啟服務，以確保伺服器重新讀取更新後的資料庫。', 
+            report 
+        });
+    } catch (err) {
+        console.error('Migration error:', err);
+        res.status(500).json({ error: '遷移失敗: ' + err.message });
+    }
+});
 
 // Serve Vite built files in production
 if (process.env.NODE_ENV === 'production') {
