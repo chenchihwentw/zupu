@@ -117,9 +117,10 @@ const AppContent = () => {
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         borderBottom: window.innerWidth < 768 ? '1px solid rgba(0,0,0,0.05)' : '1px solid rgba(255, 255, 255, 0.4)',
-        boxShadow: 'var(--shadow-md)'
+        boxShadow: 'var(--shadow-md)',
+        flexWrap: 'wrap'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth < 768 ? '2px' : '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth < 768 ? '2px' : '8px', flexWrap: 'wrap' }}>
           <div 
             onClick={() => navigate('/')}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
@@ -211,6 +212,7 @@ const AppContent = () => {
                   navigate(item.path);
                 }}
                 style={{
+                  flexShrink: 0,
                   padding: window.innerWidth < 768 ? '5px 10px' : '6px 16px',
                   borderRadius: 'var(--radius-full)',
                   background: currentView === item.id ? 'white' : 'transparent',

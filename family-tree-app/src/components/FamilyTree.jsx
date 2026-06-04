@@ -1075,7 +1075,8 @@ const FamilyTree = () => {
         alignItems: 'center',
         gap: window.innerWidth < 768 ? '6px' : '20px',
         backgroundColor: window.innerWidth < 768 ? 'rgba(249, 250, 251, 0.9)' : 'transparent',
-        backdropFilter: window.innerWidth < 768 ? 'blur(10px)' : 'none'
+        backdropFilter: window.innerWidth < 768 ? 'blur(10px)' : 'none',
+        flexWrap: window.innerWidth < 768 ? 'wrap' : 'nowrap'
       }}>
         {/* Tab Switcher */}
         <div className="glass-panel" style={{ 
@@ -1099,6 +1100,7 @@ const FamilyTree = () => {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
+                flexShrink: 0,
                 position: 'relative',
                 padding: window.innerWidth < 768 ? '8px 16px' : '10px 24px',
                 borderRadius: 'var(--radius-full)',
@@ -1142,6 +1144,7 @@ const FamilyTree = () => {
           <button
             onClick={() => setCardOrientation(prev => prev === 'vertical' ? 'horizontal' : 'vertical')}
             style={{
+              flexShrink: 0,
               padding: '8px 16px',
               borderRadius: 'var(--radius-full)',
               background: 'white',
