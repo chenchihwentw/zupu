@@ -99,7 +99,7 @@ const FamilyTree = () => {
       setFamilyInfo(family_info);
       setViewContext(view_context);
       switchFamily(family_info?.id);
-      setCanEditFamily(hasPermission('family_admin', family_info?.id));
+      setCanEditFamily(hasPermission('editor', family_info?.id));
       setCanCreateFamily(view_context?.can_create_family || false);
       
       if (notice) {

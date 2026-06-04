@@ -9,7 +9,7 @@ const MemberDetail = ({ initialTab }) => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { hasPermission, token, currentFamilyId } = useAuth();
-    const canEdit = hasPermission('family_admin');
+    const canEdit = hasPermission('editor');
     const [member, setMember] = useState(null);
     const [activeTab, setActiveTab] = useState(initialTab || 'basic'); // 'basic', 'biography', 'photos'
     const [loading, setLoading] = useState(true);
@@ -329,7 +329,7 @@ const SimpleMarkdownRenderer = ({ content }) => {
 // Photos Tab Component
 const PhotosTab = ({ member }) => {
     const { user, token, currentFamilyId, hasPermission } = useAuth();
-    const canEdit = hasPermission('family_admin');
+    const canEdit = hasPermission('editor');
     const [photos, setPhotos] = useState([]);
     const [allMembers, setAllMembers] = useState([]); // 用於標註時選擇
     const [loading, setLoading] = useState(true);
