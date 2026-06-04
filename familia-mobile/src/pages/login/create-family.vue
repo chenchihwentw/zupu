@@ -81,7 +81,7 @@ const handleCreate = async () => {
       }
       uni.showToast({ title: '建立成功，歡迎加入！', icon: 'success' });
       setTimeout(() => {
-        uni.switchTab({ url: '/pages/index/index' });
+        uni.switchTab({ url: '/pages/tree/index' });
       }, 1500);
     }
   } catch (error) {

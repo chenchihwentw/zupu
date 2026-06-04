@@ -97,7 +97,7 @@ const handleSubmit = async () => {
         uni.setStorageSync('user', JSON.stringify(res.user));
         uni.showToast({ title: '註冊成功，歡迎加入！', icon: 'success' });
         setTimeout(() => {
-          uni.switchTab({ url: '/pages/index/index' });
+          uni.switchTab({ url: '/pages/tree/index' });
         }, 1500);
       }
     } else {
@@ -113,7 +113,7 @@ const handleSubmit = async () => {
         
         uni.showToast({ title: '登入成功', icon: 'success' });
         setTimeout(() => {
-          uni.switchTab({ url: '/pages/index/index' });
+          uni.switchTab({ url: '/pages/tree/index' });
         }, 1000);
       }
     }

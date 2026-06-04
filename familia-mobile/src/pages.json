@@ -1,16 +1,16 @@
 {
 	"pages": [
 		{
+			"path": "pages/tree/index",
+			"style": {
+				"navigationBarTitleText": "圖形族譜"
+			}
+		},
+		{
 			"path": "pages/index/index",
 			"style": {
 				"navigationBarTitleText": "家族",
 				"enablePullDownRefresh": true
-			}
-		},
-		{
-			"path": "pages/tree/index",
-			"style": {
-				"navigationBarTitleText": "圖形族譜"
 			}
 		},
 		{
@@ -95,12 +95,12 @@
 		"borderStyle": "black",
 		"list": [
 			{
-				"pagePath": "pages/index/index",
-				"text": "家族"
-			},
-			{
 				"pagePath": "pages/tree/index",
 				"text": "族譜"
+			},
+			{
+				"pagePath": "pages/index/index",
+				"text": "家族"
 			},
 			{
 				"pagePath": "pages/memorial/index",

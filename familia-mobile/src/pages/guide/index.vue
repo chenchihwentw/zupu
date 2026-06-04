@@ -66,9 +66,7 @@ const startApp = () => {
   // 記錄已看過教學
   uni.setStorageSync('has_seen_guide', true)
   // 跳轉到首頁
-  uni.switchTab({
-    url: '/pages/index/index'
-  })
+  uni.switchTab({ url: '/pages/tree/index' })
 }
 </script>
 

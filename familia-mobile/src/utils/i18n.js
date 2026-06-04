@@ -31,9 +31,7 @@ export const setupI18n = (app) => {
     // #endif
     
     // #ifndef H5
-    uni.reLaunch({
-      url: '/pages/index/index'
-    });
+    uni.reLaunch({ url: '/pages/tree/index' });
     // #endif
   };
   

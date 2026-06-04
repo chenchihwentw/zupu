@@ -120,8 +120,23 @@ const fetchTreeData = async () => {
     if (Array.isArray(res)) {
       allMembers.value = res;
       if (!focusMemberId.value && res.length > 0) {
-        // 預設找第一個人
-        focusMemberId.value = res[0].id; 
+        let defaultId = res[0].id;
+        
+        // 嘗試優先聚焦於當前登入使用者
+        try {
+          const userStr = uni.getStorageSync('user');
+          if (userStr) {
+            const user = JSON.parse(userStr);
+            const myMemberId = user.linkedMemberId;
+            if (myMemberId && res.some(m => m.id == myMemberId)) {
+              defaultId = myMemberId;
+            }
+          }
+        } catch (e) {
+          console.error('Failed to parse user', e);
+        }
+        
+        focusMemberId.value = defaultId; 
       }
     }
   } catch (error) {
