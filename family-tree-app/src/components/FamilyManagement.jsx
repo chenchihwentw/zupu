@@ -128,6 +128,28 @@ function FamilyManagement() {
     }
   };
 
+  const handleUpdateUserRole = async (targetUserId, newRole) => {
+    try {
+      if (!window.confirm(`確定要將該成員的權限更改為「${newRole === 'admin' ? '管理員' : newRole === 'editor' ? '編輯者' : '普通成員'}」嗎？`)) return;
+      
+      const token = localStorage.getItem('token');
+      await axios.put(`/api/family/${currentFamilyId}/member-role`, 
+        { targetUserId, newRole },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // 更新本地狀態
+      setStorageUsers(prev => prev.map(u => 
+        u.userId === targetUserId ? { ...u, role: newRole } : u
+      ));
+      
+      setMessage('用戶權限已更新！');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError('更新權限失敗: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
   const fetchFamilyInfo = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -352,7 +374,7 @@ function FamilyManagement() {
 
   const tabs = [
     { id: 'member-invite', label: '成員邀請', icon: UserPlus },
-    { id: 'storage-settings', label: '儲存設定', icon: HardDrive },
+    { id: 'storage-settings', label: '權限與配額', icon: HardDrive },
     { id: 'family-info', label: '家族信息', icon: Home },
     // { id: 'family-merge', label: '家族合併', icon: GitMerge },
     { id: 'batch-labels', label: '批量標籤', icon: Tag }
@@ -711,7 +733,7 @@ function FamilyManagement() {
               <div style={styles.card}>
                 <div style={styles.cardHeader}>
                   <HardDrive size={20} color="#3b82f6" />
-                  <h2 style={styles.cardTitle}>家族空間與配額調度</h2>
+                  <h2 style={styles.cardTitle}>成員權限與存儲配額調度</h2>
                 </div>
                 
                 <div style={styles.quotaConfigBox}>
@@ -761,13 +783,25 @@ function FamilyManagement() {
                               </div>
                             </td>
                             <td style={styles.td}>
-                              <span style={{
-                                ...styles.roleBadge,
-                                backgroundColor: u.role === 'admin' ? '#fee2e2' : '#f1f5f9',
-                                color: u.role === 'admin' ? '#ef4444' : '#64748b'
-                              }}>
-                                {u.role === 'admin' ? '管理員' : '普通用戶'}
-                              </span>
+                              {u.userId === user?.userId || u.role === 'super_admin' ? (
+                                <span style={{
+                                  ...styles.roleBadge,
+                                  backgroundColor: u.role === 'admin' || u.role === 'family_admin' || u.role === 'super_admin' ? '#fee2e2' : '#f1f5f9',
+                                  color: u.role === 'admin' || u.role === 'family_admin' || u.role === 'super_admin' ? '#ef4444' : '#64748b'
+                                }}>
+                                  {u.role === 'admin' || u.role === 'family_admin' ? '管理員' : u.role === 'super_admin' ? '超級管理員' : u.role === 'editor' ? '編輯者' : '普通用戶'}
+                                </span>
+                              ) : (
+                                <select 
+                                  value={u.role === 'family_admin' ? 'admin' : u.role} 
+                                  onChange={(e) => handleUpdateUserRole(u.userId, e.target.value)}
+                                  style={{...styles.tableInput, width: '110px', fontSize: '13px', backgroundColor: u.role === 'admin' || u.role === 'family_admin' ? '#fef2f2' : '#f8fafc', color: u.role === 'admin' || u.role === 'family_admin' ? '#ef4444' : '#475569'}}
+                                >
+                                  <option value="admin">管理員</option>
+                                  <option value="editor">編輯者</option>
+                                  <option value="user">普通用戶</option>
+                                </select>
+                              )}
                             </td>
                             <td style={styles.td}>
                               <div style={styles.storageUsage}>

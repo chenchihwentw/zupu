@@ -4251,6 +4251,47 @@ app.post('/api/family/batch-labels/execute', authenticateToken, async (req, res)
   }
 });
 
+// Update member role (Admin only)
+app.put('/api/family/:id/member-role', authenticateToken, async (req, res) => {
+    try {
+        const familyId = req.params.id;
+        const { targetUserId, newRole } = req.body;
+        const userId = req.user.userId;
+
+        // 權限檢查（僅管理員）
+        const roleRow = await new Promise((resolve, reject) => {
+            db.get('SELECT role FROM user_family_trees WHERE user_id = ? AND family_tree_id = ?', [userId, familyId], (err, row) => {
+                if (err) reject(err); else resolve(row);
+            });
+        });
+
+        if (!roleRow || !['admin', 'family_admin', 'super_admin'].includes(roleRow.role)) {
+            return res.status(403).json({ error: '僅管理員可修改權限' });
+        }
+
+        // 不允許修改自己的權限
+        if (targetUserId === userId) {
+            return res.status(400).json({ error: '無法修改自己的權限，請請其他管理員協助' });
+        }
+        
+        // 驗證新角色
+        if (!['user', 'editor', 'admin', 'family_admin'].includes(newRole)) {
+            return res.status(400).json({ error: '無效的權限角色' });
+        }
+
+        await new Promise((resolve, reject) => {
+            db.run('UPDATE user_family_trees SET role = ? WHERE user_id = ? AND family_tree_id = ?', [newRole, targetUserId, familyId], function(err) {
+                if (err) reject(err); else resolve(this);
+            });
+        });
+
+        res.json({ message: '權限更新成功' });
+    } catch (err) {
+        console.error('Update role error:', err);
+        res.status(500).json({ error: '伺服器錯誤' });
+    }
+});
+
 // Handle SPA routing - return index.html for all non-API routes
 if (process.env.NODE_ENV === 'production') {
   app.get('/m/*all', (req, res) => {
