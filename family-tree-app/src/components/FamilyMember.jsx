@@ -165,14 +165,15 @@ const FamilyMember = ({
                             onClick={(e) => { e.stopPropagation(); onAddRelative(member, 'parent'); }}
                             style={{
                                 ...edgeButtonStyle,
-                                top: '-10px',
+                                top: '-12px',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
                                 backgroundColor: '#6366f1',
                             }}
                             title="添加父母"
                         >
-                            <Plus size={11} />
+                            <Plus size={10} style={{marginRight: '2px'}} />
+                            <span style={{fontSize: '10px', whiteSpace: 'nowrap'}}>父母</span>
                         </button>
                     )}
                     {/* Bottom: Child */}
@@ -181,14 +182,15 @@ const FamilyMember = ({
                         onClick={(e) => { e.stopPropagation(); onAddRelative(member, 'child'); }}
                         style={{
                             ...edgeButtonStyle,
-                            bottom: '-10px',
+                            bottom: '-12px',
                             left: '50%',
                             transform: 'translateX(-50%)',
                             backgroundColor: '#10b981',
                         }}
                         title="添加子女"
                     >
-                        <Plus size={11} />
+                        <Plus size={10} style={{marginRight: '2px'}} />
+                        <span style={{fontSize: '10px', whiteSpace: 'nowrap'}}>子女</span>
                     </button>
                     {/* Left: Sibling (Hide if no parents) */}
                     {(member.parents?.length || 0) > 0 && (
@@ -197,14 +199,15 @@ const FamilyMember = ({
                             onClick={(e) => { e.stopPropagation(); onAddRelative(member, 'sibling'); }}
                             style={{
                                 ...edgeButtonStyle,
-                                left: '-10px',
+                                left: '-20px',
                                 top: '50%',
                                 transform: 'translateY(-50%)',
                                 backgroundColor: '#f59e0b',
                             }}
-                            title="添加兄弟姐妹"
+                            title="添加兄弟姊妹"
                         >
-                            <Plus size={11} />
+                            <Plus size={10} style={{marginRight: '2px'}} />
+                            <span style={{fontSize: '10px', whiteSpace: 'nowrap', writingMode: 'horizontal-tb'}}>手足</span>
                         </button>
                     )}
                     {/* Right: Spouse (Hide if already has a spouse) */}
@@ -214,14 +217,15 @@ const FamilyMember = ({
                             onClick={(e) => { e.stopPropagation(); onAddRelative(member, 'spouse'); }}
                             style={{
                                 ...edgeButtonStyle,
-                                right: '-10px',
+                                right: '-20px',
                                 top: '50%',
                                 transform: 'translateY(-50%)',
                                 backgroundColor: '#ec4899',
                             }}
                             title="添加配偶"
                         >
-                            <Plus size={11} />
+                            <Plus size={10} style={{marginRight: '2px'}} />
+                            <span style={{fontSize: '10px', whiteSpace: 'nowrap', writingMode: 'horizontal-tb'}}>配偶</span>
                         </button>
                     )}
                 </div>
@@ -330,17 +334,21 @@ const FamilyMember = ({
 
 const edgeButtonStyle = {
     position: 'absolute',
-    width: '18px',
-    height: '18px',
-    borderRadius: '50%',
+    width: 'auto',
+    padding: '2px 6px',
+    height: '20px',
+    borderRadius: '10px',
     color: 'white',
-    border: '2px solid white',
+    border: '1.5px solid white',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: 'var(--shadow-md)',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
     zIndex: 25,
-    cursor: 'pointer'
+    cursor: 'pointer',
+    fontWeight: 'bold',
+    transition: 'all 0.2s ease',
+    opacity: 0.95
 };
 
 const actionBtnIconStyle = {
