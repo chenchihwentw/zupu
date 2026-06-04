@@ -1,4 +1,4 @@
-export const SERVER_URL = 'http://localhost:3001';
+export const SERVER_URL = 'https://zupu.up.railway.app';
 export const BASE_URL = `${SERVER_URL}/api`;
 
 export const getFullUrl = (path) => {
