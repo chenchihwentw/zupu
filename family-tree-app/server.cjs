@@ -135,6 +135,7 @@ app.post('/api/admin/migrate-data', migrationUpload.fields([{ name: 'db', maxCou
 // Serve Vite built files in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(staticPath));
+  app.use('/m', express.static(path.join(__dirname, 'mobile-dist')));
 }
 
 // Initialize OpenCC converters
@@ -4252,6 +4253,9 @@ app.post('/api/family/batch-labels/execute', authenticateToken, async (req, res)
 
 // Handle SPA routing - return index.html for all non-API routes
 if (process.env.NODE_ENV === 'production') {
+  app.get('/m/*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'mobile-dist', 'index.html'));
+  });
   app.get('*all', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
   });
