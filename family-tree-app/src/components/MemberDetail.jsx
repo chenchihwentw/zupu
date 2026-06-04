@@ -5,13 +5,13 @@ import axios from 'axios';
 import { MEMBER_FIELDS, formatMemberValue, getFullDateString } from '../utils/memberSchema';
 import HelpLink from './HelpLink';
 
-const MemberDetail = () => {
+const MemberDetail = ({ initialTab }) => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { hasPermission, token, currentFamilyId } = useAuth();
     const canEdit = hasPermission('family_admin');
     const [member, setMember] = useState(null);
-    const [activeTab, setActiveTab] = useState('basic'); // 'basic', 'biography', 'photos'
+    const [activeTab, setActiveTab] = useState(initialTab || 'basic'); // 'basic', 'biography', 'photos'
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -136,8 +136,9 @@ const BasicInfoTab = ({ member }) => {
         { title: '核心身分', fields: ['name', 'gender', 'generation'] },
         { title: '文化稱謂', fields: ['courtesy_name', 'pseudonym', 'aliases', 'clan_name', 'ancestral_home'] },
         { title: '生卒年代', fields: ['birth_date_full', 'death_date_full', 'nationality', 'birth_place'] },
-        { title: '社會背景', fields: ['education', 'occupation'] },
-        { title: '聯繫方式', fields: ['phone', 'email', 'address', 'remark'] }
+        { title: '地理資訊', fields: ['province', 'city', 'address'] },
+        { title: '聯繫方式', fields: ['phone', 'phone2', 'phone3', 'wechat', 'line', 'email', 'remark'] },
+        { title: '社會背景', fields: ['education', 'occupation'] }
     ];
 
     return (

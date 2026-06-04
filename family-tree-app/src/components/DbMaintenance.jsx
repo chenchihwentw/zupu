@@ -4,7 +4,10 @@ import axios from 'axios';
 const API_URL = '/api';
 
 const DbMaintenance = () => {
+  const [activeTab, setActiveTab] = useState('members');
   const [members, setMembers] = useState([]);
+  const [families, setFamilies] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -21,7 +24,7 @@ const DbMaintenance = () => {
     children: '[]'
   });
 
-  // 獲取所有成員
+  // 獲取成員數據
   const fetchMembers = async () => {
     try {
       setLoading(true);
@@ -29,15 +32,51 @@ const DbMaintenance = () => {
       setMembers(response.data);
       setError(null);
     } catch (err) {
-      setError('獲取數據失敗: ' + err.message);
+      setError('獲取成員失敗: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 獲取全局家族配額數據
+  const fetchFamilies = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/admin/families-usage`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setFamilies(response.data);
+      setError(null);
+    } catch (err) {
+      setError('獲取家族配額失敗: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 獲取全域用戶配額數據
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/admin/users-usage`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUsers(response.data);
+      setError(null);
+    } catch (err) {
+      setError('獲取用戶配額失敗: ' + err.message);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMembers();
-  }, []);
+    if (activeTab === 'members') fetchMembers();
+    if (activeTab === 'families') fetchFamilies();
+    if (activeTab === 'users') fetchUsers();
+  }, [activeTab]);
 
   // 開始編輯
   const handleEdit = (member) => {
@@ -127,362 +166,239 @@ const DbMaintenance = () => {
     member.id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // 修改家族配額
+  const handleUpdateFamilyQuota = async (familyId, newLimit) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API_URL}/family/${familyId}/storage-limit`, 
+        { limit_mb: parseInt(newLimit) },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchFamilies();
+      alert('家族配額更新成功！');
+    } catch (err) {
+      alert('更新失敗: ' + err.message);
+    }
+  };
+
+  // 修改用戶公平使用限額
+  const handleUpdateUserQuota = async (targetUserId, newLimit) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API_URL}/user/${targetUserId}/fair-use-limit`, 
+        { limit_mb: parseInt(newLimit) },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchUsers();
+      alert('用戶限額更新成功！');
+    } catch (err) {
+      alert('更新失敗: ' + err.message);
+    }
+  };
+
   // 簡化顯示 JSON 數組
   const formatArray = (arr) => {
     if (!arr || arr.length === 0) return '-';
-    return arr.join(', ');
+    // 確保處理字串格式的 JSON
+    const data = typeof arr === 'string' ? JSON.parse(arr) : arr;
+    return Array.isArray(data) ? data.join(', ') : data;
   };
 
   if (loading) return <div style={{ padding: '20px' }}>加載中...</div>;
   if (error) return <div style={{ padding: '20px', color: 'red' }}>{error}</div>;
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>數據庫維護 - Members 表</h2>
+    <div style={{ padding: '20px', fontFamily: 'Inter, sans-serif' }}>
+      <h2 style={{ marginBottom: '20px', color: '#1a1a1a' }}>⚙️ 系統維護管理系統</h2>
       
-      {/* 工具欄 */}
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-        <input
-          type="text"
-          placeholder="搜索姓名或ID..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ padding: '8px', width: '200px' }}
-        />
-        <button 
-          onClick={() => setShowAddModal(true)}
-          style={{ 
-            padding: '8px 16px', 
-            backgroundColor: '#52c41a', 
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          + 添加成員
-        </button>
-        <button 
-          onClick={fetchMembers}
-          style={{ 
-            padding: '8px 16px', 
-            backgroundColor: '#1890ff', 
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          刷新
-        </button>
+      {/* 標籤導航 */}
+      <div style={{ 
+        display: 'flex', 
+        borderBottom: '2px solid #f0f0f0', 
+        marginBottom: '20px',
+        gap: '20px'
+      }}>
+        {[
+          { id: 'members', label: '👥 成員管理' },
+          { id: 'families', label: '🏘️ 家族配額' },
+          { id: 'users', label: '👤 用戶限額' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => { setActiveTab(tab.id); setEditingId(null); }}
+            style={{
+              padding: '12px 20px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === tab.id ? '3px solid #1890ff' : '3px solid transparent',
+              color: activeTab === tab.id ? '#1890ff' : '#666',
+              fontWeight: activeTab === tab.id ? '600' : '400',
+              cursor: 'pointer',
+              fontSize: '15px',
+              transition: 'all 0.3s'
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* 統計信息 */}
-      <div style={{ marginBottom: '10px', color: '#666' }}>
-        總共 {members.length} 條記錄，顯示 {filteredMembers.length} 條
+      {/* 錯誤提示 */}
+      {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
+
+      {/* 分頁內容渲染 */}
+      <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+        {activeTab === 'members' && renderMembersTable()}
+        {activeTab === 'families' && renderFamiliesTable()}
+        {activeTab === 'users' && renderUsersTable()}
       </div>
 
-      {/* 表格 */}
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f0f0f0' }}>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>ID</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>姓名</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>性別</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>家族ID</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>父母</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>配偶</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>子女</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>操作</th>
+      {/* 彈窗 */}
+      {showAddModal && renderAddModal()}
+    </div>
+  );
+
+  function renderMembersTable() {
+    return (
+      <div>
+        <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+          <input
+            type="text"
+            placeholder="搜尋姓名或ID..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ padding: '10px', width: '250px', borderRadius: '6px', border: '1px solid #ddd' }}
+          />
+          <button 
+            onClick={() => setShowAddModal(true)}
+            style={{ padding: '10px 20px', backgroundColor: '#52c41a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+          >
+            + 添加成員
+          </button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+                <th style={{ padding: '12px', textAlign: 'left' }}>ID</th>
+                <th style={{ padding: '12px', textAlign: 'left' }}>姓名</th>
+                <th style={{ padding: '12px', textAlign: 'left' }}>家族ID</th>
+                <th style={{ padding: '12px', textAlign: 'left' }}>關係鏈</th>
+                <th style={{ padding: '12px', textAlign: 'center' }}>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredMembers.map((member) => (
+                <tr key={member.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                  <td style={{ padding: '12px', color: '#999', fontSize: '11px' }}>{member.id}</td>
+                  <td style={{ padding: '12px', fontWeight: '500' }}>{member.name}</td>
+                  <td style={{ padding: '12px' }}>{member.family_tree_id}</td>
+                  <td style={{ padding: '12px', fontSize: '11px', color: '#666' }}>
+                    P: {formatArray(member.parents)} | S: {formatArray(member.spouses)} | C: {formatArray(member.children)}
+                  </td>
+                  <td style={{ padding: '12px', textAlign: 'center' }}>
+                    <button onClick={() => handleDelete(member.id)} style={{ color: '#ff4d4f', border: 'none', background: 'none', cursor: 'pointer' }}>刪除</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  function renderFamiliesTable() {
+    return (
+      <div>
+        <h4 style={{ marginBottom: '15px' }}>🏘️ 家族系統配額管理</h4>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead style={{ backgroundColor: '#fafafa' }}>
+            <tr>
+              <th style={{ padding: '12px', textAlign: 'left' }}>家族名稱/ID</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>成員數</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>總占用 (KB)</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>當前上限 (MB)</th>
+              <th style={{ padding: '12px', textAlign: 'center' }}>調整</th>
             </tr>
           </thead>
           <tbody>
-            {filteredMembers.map((member) => (
-              <tr key={member.id} style={{ borderBottom: '1px solid #ddd' }}>
-                {editingId === member.id ? (
-                  // 編輯模式
-                  <>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                      {member.id}
-                    </td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                      <input
-                        type="text"
-                        value={editData.name || ''}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
-                        style={{ width: '100px', padding: '4px' }}
-                      />
-                    </td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                      <select
-                        value={editData.gender || 'male'}
-                        onChange={(e) => handleInputChange('gender', e.target.value)}
-                        style={{ padding: '4px' }}
-                      >
-                        <option value="male">男</option>
-                        <option value="female">女</option>
-                      </select>
-                    </td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                      <input
-                        type="text"
-                        value={editData.family_tree_id || ''}
-                        onChange={(e) => handleInputChange('family_tree_id', e.target.value)}
-                        style={{ width: '80px', padding: '4px' }}
-                      />
-                    </td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                      <input
-                        type="text"
-                        value={editData.parents || '[]'}
-                        onChange={(e) => handleInputChange('parents', e.target.value)}
-                        style={{ width: '100px', padding: '4px', fontSize: '10px' }}
-                        placeholder='["id1", "id2"]'
-                      />
-                    </td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                      <input
-                        type="text"
-                        value={editData.spouses || '[]'}
-                        onChange={(e) => handleInputChange('spouses', e.target.value)}
-                        style={{ width: '100px', padding: '4px', fontSize: '10px' }}
-                        placeholder='["id1", "id2"]'
-                      />
-                    </td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                      <input
-                        type="text"
-                        value={editData.children || '[]'}
-                        onChange={(e) => handleInputChange('children', e.target.value)}
-                        style={{ width: '100px', padding: '4px', fontSize: '10px' }}
-                        placeholder='["id1", "id2"]'
-                      />
-                    </td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                      <button 
-                        onClick={() => handleSave(member.id)}
-                        style={{ 
-                          padding: '4px 8px', 
-                          backgroundColor: '#52c41a', 
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          marginRight: '5px'
-                        }}
-                      >
-                        保存
-                      </button>
-                      <button 
-                        onClick={handleCancel}
-                        style={{ 
-                          padding: '4px 8px', 
-                          backgroundColor: '#999', 
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        取消
-                      </button>
-                    </td>
-                  </>
-                ) : (
-                  // 顯示模式
-                  <>
-                    <td style={{ padding: '8px', border: '1px solid #ddd', fontSize: '10px' }}>
-                      {member.id}
-                    </td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>{member.name}</td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                      {member.gender === 'male' ? '男' : '女'}
-                    </td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd', fontSize: '10px' }}>
-                      {member.family_tree_id}
-                    </td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd', fontSize: '10px' }}>
-                      {formatArray(member.parents)}
-                    </td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd', fontSize: '10px' }}>
-                      {formatArray(member.spouses)}
-                    </td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd', fontSize: '10px' }}>
-                      {formatArray(member.children)}
-                    </td>
-                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                      <button 
-                        onClick={() => handleEdit(member)}
-                        style={{ 
-                          padding: '4px 8px', 
-                          backgroundColor: '#1890ff', 
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          marginRight: '5px'
-                        }}
-                      >
-                        編輯
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(member.id)}
-                        style={{ 
-                          padding: '4px 8px', 
-                          backgroundColor: '#ff4d4f', 
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        刪除
-                      </button>
-                    </td>
-                  </>
-                )}
+            {families.map(f => (
+              <tr key={f.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                <td style={{ padding: '12px' }}><strong>{f.name}</strong><br/><small>{f.id}</small></td>
+                <td style={{ padding: '12px' }}>{f.memberCount}</td>
+                <td style={{ padding: '12px' }}>{(f.totalUsedKb || 0).toLocaleString()} KB</td>
+                <td style={{ padding: '12px' }}>{f.storage_limit_mb} MB</td>
+                <td style={{ padding: '12px', textAlign: 'center' }}>
+                  <select 
+                    onChange={(e) => handleUpdateFamilyQuota(f.id, e.target.value)}
+                    value={f.storage_limit_mb}
+                    style={{ padding: '5px' }}
+                  >
+                    {[100, 200, 500, 1000, 2000, 5000].map(v => (
+                      <option key={v} value={v}>{v} MB</option>
+                    ))}
+                  </select>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+    );
+  }
 
-      {/* 添加成員彈窗 */}
-      {showAddModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 2000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '20px',
-            borderRadius: '8px',
-            width: '400px',
-            maxHeight: '80vh',
-            overflowY: 'auto'
-          }}>
-            <h3>添加新成員</h3>
-            
-            <div style={{ marginBottom: '10px' }}>
-              <label>ID:</label>
-              <input
-                type="text"
-                value={newMember.id}
-                onChange={(e) => setNewMember({ ...newMember, id: e.target.value })}
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-                placeholder="例如: b123"
-              />
-            </div>
-            
-            <div style={{ marginBottom: '10px' }}>
-              <label>姓名:</label>
-              <input
-                type="text"
-                value={newMember.name}
-                onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-              />
-            </div>
-            
-            <div style={{ marginBottom: '10px' }}>
-              <label>性別:</label>
-              <select
-                value={newMember.gender}
-                onChange={(e) => setNewMember({ ...newMember, gender: e.target.value })}
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-              >
-                <option value="male">男</option>
-                <option value="female">女</option>
-              </select>
-            </div>
-            
-            <div style={{ marginBottom: '10px' }}>
-              <label>家族ID:</label>
-              <input
-                type="text"
-                value={newMember.family_tree_id}
-                onChange={(e) => setNewMember({ ...newMember, family_tree_id: e.target.value })}
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-              />
-            </div>
-            
-            <div style={{ marginBottom: '10px' }}>
-              <label>父母 (JSON 數組):</label>
-              <input
-                type="text"
-                value={newMember.parents}
-                onChange={(e) => setNewMember({ ...newMember, parents: e.target.value })}
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-                placeholder='["parent_id1", "parent_id2"]'
-              />
-            </div>
-            
-            <div style={{ marginBottom: '10px' }}>
-              <label>配偶 (JSON 數組):</label>
-              <input
-                type="text"
-                value={newMember.spouses}
-                onChange={(e) => setNewMember({ ...newMember, spouses: e.target.value })}
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-                placeholder='["spouse_id1"]'
-              />
-            </div>
-            
-            <div style={{ marginBottom: '10px' }}>
-              <label>子女 (JSON 數組):</label>
-              <input
-                type="text"
-                value={newMember.children}
-                onChange={(e) => setNewMember({ ...newMember, children: e.target.value })}
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-                placeholder='["child_id1", "child_id2"]'
-              />
-            </div>
-            
-            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-              <button 
-                onClick={handleAdd}
-                style={{ 
-                  flex: 1,
-                  padding: '10px', 
-                  backgroundColor: '#52c41a', 
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                添加
-              </button>
-              <button 
-                onClick={() => setShowAddModal(false)}
-                style={{ 
-                  flex: 1,
-                  padding: '10px', 
-                  backgroundColor: '#999', 
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                取消
-              </button>
-            </div>
+  function renderUsersTable() {
+    return (
+      <div>
+        <h4 style={{ marginBottom: '15px' }}>👤 用戶個人公平使用限額</h4>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead style={{ backgroundColor: '#fafafa' }}>
+            <tr>
+              <th style={{ padding: '12px', textAlign: 'left' }}>用戶</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>已用空間</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>配額 (MB)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map(u => (
+              <tr key={u.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                <td style={{ padding: '12px' }}><strong>{u.full_name || u.username}</strong><br/><small>{u.email}</small></td>
+                <td style={{ padding: '12px' }}>{(u.used_storage_kb || 0).toLocaleString()} KB</td>
+                <td style={{ padding: '12px' }}>
+                  <input 
+                    type="number" 
+                    defaultValue={u.fair_use_limit_mb} 
+                    onBlur={(e) => handleUpdateUserQuota(u.id, e.target.value)}
+                    style={{ width: '80px', padding: '5px' }}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  function renderAddModal() {
+    return (
+      <div style={{
+        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+        backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000
+      }}>
+        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '400px' }}>
+          <h3>添加新成員</h3>
+          <input type="text" placeholder="ID" value={newMember.id} onChange={(e) => setNewMember({...newMember, id: e.target.value})} style={{ width: '100%', marginBottom: '10px', padding: '8px' }} />
+          <input type="text" placeholder="姓名" value={newMember.name} onChange={(e) => setNewMember({...newMember, name: e.target.value})} style={{ width: '100%', marginBottom: '10px', padding: '8px' }} />
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={handleAdd} style={{ flex: 1, padding: '10px', backgroundColor: '#52c41a', color: 'white', border: 'none', borderRadius: '4px' }}>添加</button>
+            <button onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '10px', backgroundColor: '#999', color: 'white', border: 'none', borderRadius: '4px' }}>取消</button>
           </div>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  }
 };
 
 export default DbMaintenance;

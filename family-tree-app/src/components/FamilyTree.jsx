@@ -18,7 +18,10 @@ import {
   ChevronRight, 
   Layers,
   LayoutGrid,
-  CreditCard
+  CreditCard,
+  BookOpen,
+  Search,
+  Download
 } from 'lucide-react';
 import PrintableFamilyBook from './PrintableFamilyBook';
 import RemindersPanel from './RemindersPanel';
@@ -51,6 +54,7 @@ const FamilyTree = () => {
   const [canEditFamily, setCanEditFamily] = useState(false);
   
   const [activeTab, setActiveTab] = useState('graph');
+  const [searchTerm, setSearchTerm] = useState('');
   const [cardOrientation, setCardOrientation] = useState('vertical');
   
   const [showCreateFamilyModal, setShowCreateFamilyModal] = useState(false);
@@ -837,6 +841,141 @@ const FamilyTree = () => {
     calculateLines();
   };
 
+  const exportAddressBook = () => {
+    if (family.length === 0) return;
+    const headers = ['姓名,性別,電話,WeChat,Line,Email,省/州,市,詳細地址,備註'];
+    const livingMembers = family.filter(m => !m.is_deceased);
+    const rows = livingMembers.map(m => {
+        const genderText = m.gender === 'male' ? '男' : '女';
+        return `"${m.name}","${genderText}","${m.phone || ''}","${m.wechat || ''}","${m.line || ''}","${m.email || ''}","${m.province || ''}","${m.city || ''}","${m.address || ''}","${m.remark || ''}"`;
+    });
+    const csvContent = "\uFEFF" + headers.concat(rows).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `家族通訊錄_${new Date().toLocaleDateString()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const renderAddressBook = () => {
+    // 🔍 僅過濾出在世成員 (is_deceased 為 false 或 0)
+    const livingMembers = family.filter(m => !m.is_deceased);
+    
+    const filteredMembers = livingMembers.filter(m => 
+      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (m.city && m.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (m.phone && m.phone.includes(searchTerm))
+    );
+
+    return (
+      <div className="glass-panel" style={{ padding: '24px', borderRadius: 'var(--radius-lg)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '15px' }}>
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BookOpen size={22} color="var(--primary-color)" /> 家族通訊簿
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>搜尋成員聯繫方式或匯出通訊備份</p>
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ position: 'relative' }}>
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input 
+                type="text" 
+                placeholder="搜尋姓名/城市..." 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                style={{ 
+                  padding: '8px 12px 8px 36px', 
+                  borderRadius: 'var(--radius-full)', 
+                  border: '1px solid #e2e8f0', 
+                  fontSize: '13px',
+                  width: '200px',
+                  outline: 'none',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+              />
+            </div>
+            <button 
+              onClick={exportAddressBook} 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: '8px 16px', 
+                borderRadius: 'var(--radius-full)', 
+                backgroundColor: '#10b981', 
+                color: 'white', 
+                fontSize: '13px', 
+                fontWeight: 700, 
+                border: 'none', 
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
+              }}
+            >
+              <Download size={16} /> 匯出 CSV
+            </button>
+          </div>
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', borderBottom: '2px solid #f1f5f9' }}>
+                <th style={{ padding: '12px', color: 'var(--text-muted)', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase' }}>姓名</th>
+                <th style={{ padding: '12px', color: 'var(--text-muted)', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase' }}>聯繫方式</th>
+                <th style={{ padding: '12px', color: 'var(--text-muted)', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase' }}>社交帳號</th>
+                <th style={{ padding: '12px', color: 'var(--text-muted)', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase' }}>居住地址</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredMembers.map(m => (
+                <tr key={m.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                  <td style={{ padding: '16px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ 
+                        width: '32px', height: '32px', borderRadius: '10px', 
+                        backgroundColor: m.gender === 'male' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(236, 72, 153, 0.1)',
+                        color: m.gender === 'male' ? '#3b82f6' : '#ec4899',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '14px'
+                      }}>
+                        {m.name.charAt(0)}
+                      </div>
+                      <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{m.name}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '16px 12px' }}>
+                    <div style={{ color: 'var(--text-main)', fontWeight: 500 }}>{m.phone || '-'}</div>
+                    {m.email && <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{m.email}</div>}
+                  </td>
+                  <td style={{ padding: '16px 12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {m.wechat && <span style={{ fontSize: '12px', color: '#16a34a', backgroundColor: '#f0fdf4', padding: '2px 8px', borderRadius: '4px', width: 'fit-content' }}>微信: {m.wechat}</span>}
+                      {m.line && <span style={{ fontSize: '12px', color: '#0284c7', backgroundColor: '#f0f9ff', padding: '2px 8px', borderRadius: '4px', width: 'fit-content' }}>Line: {m.line}</span>}
+                      {!m.wechat && !m.line && <span style={{ color: '#cbd5e1' }}>--</span>}
+                    </div>
+                  </td>
+                  <td style={{ padding: '16px 12px' }}>
+                    <div style={{ fontWeight: 600 }}>{m.province}{m.city}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={m.address}>{m.address || '-'}</div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filteredMembers.length === 0 && (
+            <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <Search size={40} style={{ marginBottom: '12px', opacity: 0.2 }} />
+              <p>找不到符合條件的成員聯絡資訊</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="family-tree-container" style={{ 
       minHeight: '100vh',
@@ -953,6 +1092,7 @@ const FamilyTree = () => {
           {[
             { id: 'graph', label: '圖形樹', icon: LayoutGrid },
             { id: 'text', label: '族譜', icon: Book },
+            { id: 'address-book', label: '通訊簿', icon: BookOpen },
             { id: 'reminders', label: '提醒', icon: Bell },
           ].map(tab => (
             <button
@@ -1111,6 +1251,9 @@ const FamilyTree = () => {
             isTraditional={isTraditional} 
           />
         )}
+
+        {/* Address Book Tab */}
+        {!loading && !error && family.length > 0 && activeTab === 'address-book' && renderAddressBook()}
 
         {/* Reminders Tab */}
         {!loading && !error && family.length > 0 && activeTab === 'reminders' && (

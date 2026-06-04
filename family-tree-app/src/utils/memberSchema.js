@@ -20,8 +20,14 @@ export const MEMBER_FIELDS = {
     birth_date_full: { label: '出生日期', group: 'time' },
     death_date_full: { label: '過世日期', group: 'time' },
     phone: { label: '電話', group: 'contact' },
+    phone2: { label: '電話2', group: 'contact' },
+    phone3: { label: '電話3', group: 'contact' },
+    wechat: { label: '微信號', group: 'contact' },
+    line: { label: 'Line', group: 'contact' },
     email: { label: '郵件', group: 'contact' },
-    address: { label: '地址', group: 'contact' },
+    province: { label: '省/州', group: 'contact' },
+    city: { label: '市', group: 'contact' },
+    address: { label: '詳細地址', group: 'contact' },
     remark: { label: '備註', group: 'misc' }
 };
 

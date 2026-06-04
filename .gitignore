@@ -1,0 +1,22 @@
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+dist/
+
+# Database
+*.db
+*.sqlite
+family.db
+family.db-journal
+
+# Uploads
+uploads/
+/family-tree-app/uploads/
+/family-tree-app/family.db*
+
+# Mobile build
+unpackage/
+/familia-mobile/unpackage/

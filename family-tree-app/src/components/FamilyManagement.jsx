@@ -18,7 +18,9 @@ import {
   Search,
   HardDrive,
   Database,
-  UserCheck
+  UserCheck,
+  BookOpen,
+  Download
 } from 'lucide-react';
 
 function FamilyManagement() {
@@ -31,6 +33,7 @@ function FamilyManagement() {
   const [foundFamily, setFoundFamily] = useState(null);
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState('member-invite');
+  const [searchTerm, setSearchTerm] = useState('');
   const [userFamilies, setUserFamilies] = useState([]);
   
   const [members, setMembers] = useState([]);
@@ -257,7 +260,12 @@ function FamilyManagement() {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setGeneratedMemberInvite(response.data);
+      const selectedMemberObj = members.find(m => m.id === selectedMember);
+      setGeneratedMemberInvite({
+        memberName: selectedMemberObj ? selectedMemberObj.name : '該成員',
+        inviteCode: response.data.invitation.invite_code,
+        expiresAt: response.data.invitation.expires_at
+      });
       setMessage('邀請碼生成成功！');
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
@@ -350,6 +358,93 @@ function FamilyManagement() {
     { id: 'batch-labels', label: '批量標籤', icon: Tag }
   ];
 
+  const exportAddressBook = () => {
+    if (members.length === 0) return;
+    const headers = ['姓名,性別,電話,WeChat,Line,Email,省/州,市,詳細地址,備註'];
+    const rows = members.map(m => {
+        const genderText = m.gender === 'male' ? '男' : '女';
+        return `"${m.name}","${genderText}","${m.phone || ''}","${m.wechat || ''}","${m.line || ''}","${m.email || ''}","${m.province || ''}","${m.city || ''}","${m.address || ''}","${m.remark || ''}"`;
+    });
+    const csvContent = "\uFEFF" + headers.concat(rows).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${family?.name}_家族通訊錄_${new Date().toLocaleDateString()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const renderAddressBook = () => {
+    const filteredMembers = members.filter(m => 
+      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (m.city && m.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (m.phone && m.phone.includes(searchTerm))
+    );
+
+    return (
+      <div style={{...styles.section, marginTop: '10px'}}>
+        <div style={{...styles.card, padding: '24px'}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px'}}>
+            <div>
+              <h2 style={{...styles.cardTitle, marginBottom: '4px'}}>家族通訊錄</h2>
+              <p style={{fontSize: '13px', color: '#64748b'}}>管理與查閱家族成員的聯繫方式</p>
+            </div>
+            <div style={{display: 'flex', gap: '10px'}}>
+               <div style={{position: 'relative'}}>
+                  <Search size={16} style={{position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8'}} />
+                  <input 
+                    type="text" 
+                    placeholder="搜尋姓名或城市..." 
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    style={{...styles.proInput, paddingLeft: '32px', height: '36px', fontSize: '13px', width: '180px'}}
+                  />
+               </div>
+               <button onClick={exportAddressBook} style={{...styles.proButton, height: '36px', padding: '0 15px', backgroundColor: '#10b981', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer'}}>
+                 <Download size={16} /> 匯出 CSV
+               </button>
+            </div>
+          </div>
+
+          {membersLoading ? (
+            <div style={{textAlign: 'center', padding: '40px'}}><RefreshCw className="animate-spin" size={24} color="#3b82f6" /></div>
+          ) : (
+            <div style={{overflowX: 'auto'}}>
+              <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '14px'}}>
+                <thead>
+                  <tr style={{borderBottom: '2px solid #f1f5f9', textAlign: 'left'}}>
+                    <th style={{padding: '12px 8px', color: '#64748b', fontWeight: 700}}>姓名</th>
+                    <th style={{padding: '12px 8px', color: '#64748b', fontWeight: 700}}>電話</th>
+                    <th style={{padding: '12px 8px', color: '#64748b', fontWeight: 700}}>社交帳號</th>
+                    <th style={{padding: '12px 8px', color: '#64748b', fontWeight: 700}}>居住地</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMembers.map(m => (
+                    <tr key={m.id} style={{borderBottom: '1px solid #f8fafc'}}>
+                      <td style={{padding: '12px 8px', fontWeight: 600, color: '#334155'}}>{m.name}</td>
+                      <td style={{padding: '12px 8px'}}>{m.phone || '-'}</td>
+                      <td style={{padding: '12px 8px'}}>
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '12px'}}>
+                          {m.wechat && <span style={{color: '#16a34a'}}>微信: {m.wechat}</span>}
+                          {m.line && <span style={{color: '#0284c7'}}>Line: {m.line}</span>}
+                          {!m.wechat && !m.line && '-'}
+                        </div>
+                      </td>
+                      <td style={{padding: '12px 8px'}}>{m.province}{m.city}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="family-management" style={styles.outerContainer}>
       <div style={styles.container}>
@@ -429,6 +524,7 @@ function FamilyManagement() {
           transition={{ duration: 0.3 }}
           style={styles.content}
         >
+          {activeTab === 'address-book' && renderAddressBook()}
           {activeTab === 'member-invite' && (
             <div style={styles.section}>
               <div style={styles.card}>
@@ -485,7 +581,10 @@ function FamilyManagement() {
                       </div>
                     </div>
                     <div style={styles.expiryBox}>
-                      <ShieldCheck size={14} /> 有效期至：{new Date(generatedMemberInvite.expiresAt).toLocaleDateString()}
+                      <ShieldCheck size={14} /> 
+                      {generatedMemberInvite.expiresAt 
+                        ? `有效期至：${new Date(generatedMemberInvite.expiresAt).toLocaleDateString()}`
+                        : '有效期：永久有效'}
                     </div>
                   </motion.div>
                 )}

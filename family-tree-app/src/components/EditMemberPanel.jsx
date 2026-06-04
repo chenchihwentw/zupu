@@ -213,6 +213,12 @@ const EditMemberPanel = ({ member, allMembers, onSave, onDelete, onCancel, curre
     const [isDeceased, setIsDeceased] = useState(member.is_deceased || false);
     const [email, setEmail] = useState(member.email || '');
     const [phone, setPhone] = useState(member.phone || '');
+    const [phone2, setPhone2] = useState(member.phone2 || '');
+    const [phone3, setPhone3] = useState(member.phone3 || '');
+    const [wechat, setWechat] = useState(member.wechat || '');
+    const [line, setLine] = useState(member.line || '');
+    const [province, setProvince] = useState(member.province || '');
+    const [city, setCity] = useState(member.city || '');
     const [address, setAddress] = useState(member.address || '');
     const [remark, setRemark] = useState(member.remark || '');
     const [avatarUrl, setAvatarUrl] = useState(member.avatar_url || '');
@@ -335,7 +341,7 @@ const EditMemberPanel = ({ member, allMembers, onSave, onDelete, onCancel, curre
             death_month: deathMonth ? parseInt(deathMonth) : null,
             death_day: deathDay ? parseInt(deathDay) : null,
             is_deceased: isDeceased,
-            email, phone, address, remark,
+            email, phone, phone2, phone3, wechat, line, province, city, address, remark,
             avatar_url: avatarUrl,
             biography_md: biographyMd,
             courtesy_name: courtesyName,
@@ -411,317 +417,320 @@ const EditMemberPanel = ({ member, allMembers, onSave, onDelete, onCancel, curre
         navigate(`/member/${member.id}/biography/edit`);
     };
 
+    const handleAlbumNav = async () => {
+        await handleSubmit();
+        navigate(`/member/${member.id}/album`);
+    };
+
+    const handleCopyParentAddress = (type) => {
+        const parentId = type === 'father' ? fatherId : motherId;
+        const parent = allMembers.find(m => m.id === parentId);
+        if (!parent) return alert(`請先選擇${type === 'father' ? '父親' : '母親'}`);
+        
+        if (parent.province) setProvince(parent.province);
+        if (parent.city) setCity(parent.city);
+        if (parent.address) setAddress(parent.address);
+    };
+
     const maleMembers = useMemo(() => allMembers.filter(m => m.gender === 'male' && m.id !== member.id), [allMembers, member.id]);
     const femaleMembers = useMemo(() => allMembers.filter(m => m.gender === 'female' && m.id !== member.id), [allMembers, member.id]);
     const otherMembers = useMemo(() => allMembers.filter(m => m.id !== member.id), [allMembers, member.id]);
 
     return (
-        <div className="side-panel-overlay" onClick={onCancel}>
+        <div className="side-panel-overlay" onClick={onCancel} style={{ 
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+            backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', 
+            justifyContent: 'center', alignItems: 'flex-start', zIndex: 1100, 
+            padding: '2vh 0', overflowY: 'auto' 
+        }}>
             <motion.div 
-                initial={{ x: '100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
                 className="side-panel"
                 style={{ 
-                    width: window.innerWidth < 768 ? '100vw' : '700px', 
-                    maxWidth: '100vw', 
-                    height: window.innerWidth < 768 ? '100vh' : 'auto', 
-                    maxHeight: window.innerWidth < 768 ? '100vh' : '800px', 
+                    width: '95%', 
+                    maxWidth: '800px', 
+                    height: 'auto', 
                     display: 'flex', 
                     flexDirection: 'column',
-                    borderRadius: window.innerWidth < 768 ? '0' : '12px 0 0 12px'
+                    borderRadius: '16px',
+                    background: 'white',
+                    padding: '12px 16px',
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+                    marginBottom: '2vh'
                 }}
                 onClick={e => e.stopPropagation()}
             >
-                <div className="panel-header" style={{ padding: '12px 20px', borderBottom: '1px solid #f1f5f9' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <h3 style={{ margin: 0, fontSize: '18px' }}>編輯成員資訊</h3>
-                        <small style={{ color: '#94a3b8', background: '#f8fafc', padding: '2px 6px', borderRadius: '4px' }}>ID: {member.id}</small>
+                <div className="panel-header" style={{ 
+                    padding: '8px 16px', borderBottom: '1px solid #f1f5f9', 
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                    position: 'sticky', top: 0, background: 'white', zIndex: 10
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h3 style={{ margin: 0, fontSize: '15px', color: '#1e293b' }}>成員資訊</h3>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <button 
-                            onClick={handleBiographyEdit}
-                            style={{ 
-                                display: 'flex', alignItems: 'center', gap: '6px', 
-                                padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0',
-                                background: 'white', fontSize: '13px', fontWeight: '500', cursor: 'pointer'
-                            }}
-                        >
-                            <FileText size={14} /> 編輯生平
-                        </button>
-                        <button 
-                            onClick={onCancel}
-                            style={{ background: '#f8fafc', border: 'none', padding: '8px', borderRadius: '50%', cursor: 'pointer' }}
-                        >
-                            <X size={18} />
-                        </button>
-                    </div>
+                    <button 
+                        onClick={onCancel}
+                        style={{ background: '#f1f5f9', border: 'none', padding: '6px', borderRadius: '50%', cursor: 'pointer' }}
+                    >
+                        <X size={16} />
+                    </button>
                 </div>
 
                 <div className="panel-content">
-                    {/* 頂部：頭像 + 核心狀態 */}
-                    <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
-                        <div style={{ position: 'relative', width: '80px', height: '80px' }}>
-                            <div style={{ width: '80px', height: '80px', borderRadius: '12px', overflow: 'hidden', border: '3px solid white', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                    {/* 頂部：頭像 + 姓名 + 性別 (極致壓縮行) */}
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#f8fafc', padding: '6px 10px', borderRadius: '8px', marginBottom: '8px' }}>
+                        <div style={{ position: 'relative', width: '55px', height: '55px' }}>
+                            <div style={{ width: '55px', height: '55px', borderRadius: '10px', overflow: 'hidden', border: '2px solid white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                                 {avatarUrl ? (
                                     <img src={avatarUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 ) : (
-                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
-                                        <User size={32} color="#94a3b8" />
+                                    <div style={{ width: '100%', height: '100%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <User size={22} color="#94a3b8" />
                                     </div>
                                 )}
                             </div>
                             <label style={{ 
-                                position: 'absolute', bottom: '-4px', right: '-4px', width: '28px', height: '28px', 
+                                position: 'absolute', bottom: '-2px', right: '-2px', width: '20px', height: '20px', 
                                 background: 'var(--accent-color)', borderRadius: '50%', border: '2px solid white',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white'
                             }}>
-                                <Camera size={14} />
+                                <Camera size={10} />
                                 <input type="file" hidden onChange={handleAvatarChange} accept="image/*" />
                             </label>
                         </div>
-
-                        <div style={{ 
-                            flex: 1, 
-                            display: 'grid', 
-                            gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(4, 1fr)', 
-                            gap: '12px' 
-                        }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <label style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>{MEMBER_FIELDS.surname.label}</label>
-                                <input style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }} value={surname} onChange={e => setSurname(e.target.value)} />
+                        
+                        <div style={{ flex: 1 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(60px, 1fr) minmax(60px, 1.2fr) auto', gap: '8px', alignItems: 'flex-end', marginBottom: '6px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <label style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold' }}>姓</label>
+                                    <input style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '13px' }} value={surname} onChange={e => setSurname(e.target.value)} />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <label style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold' }}>名</label>
+                                    <input style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '13px' }} value={givenName} onChange={e => setGivenName(e.target.value)} />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', paddingBottom: '4px' }}>
+                                    <input type="checkbox" id="deceased_chk" checked={isDeceased} onChange={e => setIsDeceased(e.target.checked)} />
+                                    <label htmlFor="deceased_chk" style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold' }}>已過世</label>
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <label style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>{MEMBER_FIELDS.given_name.label}</label>
-                                <input style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }} value={givenName} onChange={e => setGivenName(e.target.value)} />
+                            
+                            {/* 💡 手機端必備：核心功能快捷鍵 */}
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                <button 
+                                    onClick={handleBiographyEdit}
+                                    style={{ 
+                                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', 
+                                        padding: '5px', borderRadius: '6px', background: '#eff6ff', color: '#3b82f6', border: '1px solid #dbeafe',
+                                        fontSize: '11px', fontWeight: 'bold', cursor: 'pointer'
+                                    }}
+                                >
+                                    <FileText size={13} /> 撰寫生平
+                                </button>
+                                <button 
+                                    onClick={handleAlbumNav}
+                                    style={{ 
+                                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', 
+                                        padding: '5px', borderRadius: '6px', background: '#fdf2f8', color: '#db2777', border: '1px solid #fce7f3',
+                                        fontSize: '11px', fontWeight: 'bold', cursor: 'pointer'
+                                    }}
+                                >
+                                    <Camera size={13} /> 相冊
+                                </button>
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <label style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>{MEMBER_FIELDS.gender.label}</label>
-                                <select style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', background: 'white' }} value={gender} onChange={e => setGender(e.target.value)}>
-                                    <option value="male">男</option>
-                                    <option value="female">女</option>
-                                </select>
-                                {hasPermission('super_admin') && (
-                                    <button
-                                        onClick={() => navigate(`/admin/dashboard?target_id=${member.id}`)}
-                                        style={{
-                                            padding: '4px 10px',
-                                            borderRadius: 'var(--radius-full)',
-                                            background: 'rgba(79, 70, 229, 0.05)',
-                                            color: 'var(--primary-color)',
-                                            border: '1px solid rgba(79, 70, 229, 0.1)',
-                                            fontSize: '12px',
-                                            fontWeight: 600,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px'
-                                        }}
-                                    >
-                                        <History size={14} /> 查看歷史記錄
-                                    </button>
-                                )}
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', justifyContent: 'center' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer', marginTop: '16px' }}>
-                                    <input type="checkbox" checked={isDeceased} onChange={e => setIsDeceased(e.target.checked)} />
-                                    已過世
-                                </label>
-                            </div>
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', alignSelf: 'flex-start' }}>
+                            <label style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold' }}>性別</label>
+                            <select style={{ padding: '3px 4px', borderRadius: '4px', border: '1px solid #e2e8f0', background: 'white', fontSize: '13px' }} value={gender} onChange={e => setGender(e.target.value)}>
+                                <option value="male">男</option>
+                                <option value="female">女</option>
+                            </select>
                         </div>
                     </div>
 
-                    <form style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <form style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {/* 第二排：字/號/曾用名 */}
-                        <div style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr 1.5fr', 
-                            gap: '12px' 
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <label style={{ minWidth: '30px', fontSize: '13px', color: '#64748b' }}>{MEMBER_FIELDS.courtesy_name.label}</label>
-                                <input style={{ flex: 1, padding: '7px', borderRadius: '4px', border: '1px solid #e5e7eb' }} value={courtesyName} onChange={e => setCourtesyName(e.target.value)} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 0.8fr 1.5fr', gap: '8px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ fontSize: '10px', color: '#64748b' }}>{MEMBER_FIELDS.courtesy_name.label}</label>
+                                <input style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '12px' }} value={courtesyName} onChange={e => setCourtesyName(e.target.value)} />
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <label style={{ minWidth: '30px', fontSize: '13px', color: '#64748b' }}>{MEMBER_FIELDS.pseudonym.label}</label>
-                                <input style={{ flex: 1, padding: '7px', borderRadius: '4px', border: '1px solid #e5e7eb' }} value={pseudonym} onChange={e => setPseudonym(e.target.value)} />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ fontSize: '10px', color: '#64748b' }}>{MEMBER_FIELDS.pseudonym.label}</label>
+                                <input style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '12px' }} value={pseudonym} onChange={e => setPseudonym(e.target.value)} />
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <label style={{ minWidth: '50px', fontSize: '13px', color: '#64748b' }}>{MEMBER_FIELDS.aliases.label}</label>
-                                <input placeholder="逗號分隔" style={{ flex: 1, padding: '7px', borderRadius: '4px', border: '1px solid #e5e7eb' }} value={aliases} onChange={e => setAliases(e.target.value)} />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ fontSize: '10px', color: '#64748b' }}>{MEMBER_FIELDS.aliases.label}</label>
+                                <input placeholder="逗號分隔" style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '12px' }} value={aliases} onChange={e => setAliases(e.target.value)} />
                             </div>
                         </div>
 
-                        {/* 第三排：國籍/出生地/最高學歷 */}
-                        <div style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1.5fr 1fr', 
-                            gap: '12px' 
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <label style={{ minWidth: '30px', fontSize: '13px', color: '#64748b' }}>{MEMBER_FIELDS.nationality.label}</label>
-                                <input style={{ flex: 1, padding: '7px', borderRadius: '4px', border: '1px solid #e5e7eb' }} value={nationality} onChange={e => setNationality(e.target.value)} />
+                        {/* 第三排：國籍/出生地/學歷 */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 1fr', gap: '8px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ fontSize: '10px', color: '#64748b' }}>{MEMBER_FIELDS.nationality.label}</label>
+                                <input style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '12px' }} value={nationality} onChange={e => setNationality(e.target.value)} />
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <label style={{ minWidth: '50px', fontSize: '13px', color: '#64748b' }}>{MEMBER_FIELDS.birth_place.label}</label>
-                                <input style={{ flex: 1, padding: '7px', borderRadius: '4px', border: '1px solid #e5e7eb' }} value={birthPlace} onChange={e => setBirthPlace(e.target.value)} />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ fontSize: '10px', color: '#64748b' }}>{MEMBER_FIELDS.birth_place.label}</label>
+                                <input style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '12px' }} value={birthPlace} onChange={e => setBirthPlace(e.target.value)} />
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <label style={{ minWidth: '30px', fontSize: '13px', color: '#64748b' }}>{MEMBER_FIELDS.education.label}</label>
-                                <input style={{ flex: 1, padding: '7px', borderRadius: '4px', border: '1px solid #e5e7eb' }} value={education} onChange={e => setEducation(e.target.value)} />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ fontSize: '10px', color: '#64748b' }}>{MEMBER_FIELDS.education.label}</label>
+                                <input style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '12px' }} value={education} onChange={e => setEducation(e.target.value)} />
                             </div>
                         </div>
 
                         {/* 第四排：曾經任職 (Strong) */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <label style={{ minWidth: '80px', fontSize: '13px', fontWeight: 'bold', color: '#334155' }}>{MEMBER_FIELDS.occupation.label}</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                            <label style={{ fontSize: '10px', fontWeight: 'bold', color: '#334155' }}>{MEMBER_FIELDS.occupation.label}</label>
                             <input 
-                                style={{ flex: 1, padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px', background: '#fff' }} 
+                                style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }} 
                                 placeholder="歷史職稱、官銜或社會貢獻核心內容..." 
                                 value={occupation} onChange={e => setOccupation(e.target.value)} 
                             />
                         </div>
 
-                        {/* 第五排：堂號/祖籍 (Secondary) */}
-                        <div style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr', 
-                            gap: '12px' 
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <label style={{ minWidth: '40px', fontSize: '12px', color: '#94a3b8' }}>{MEMBER_FIELDS.clan_name.label}</label>
-                                <input style={{ flex: 1, padding: '6px', borderRadius: '4px', border: '1px solid #f1f5f9', fontSize: '12px' }} value={clanName} onChange={e => setClanName(e.target.value)} />
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <label style={{ minWidth: '40px', fontSize: '12px', color: '#94a3b8' }}>{MEMBER_FIELDS.ancestral_home.label}</label>
-                                <input style={{ flex: 1, padding: '6px', borderRadius: '4px', border: '1px solid #f1f5f9', fontSize: '12px' }} value={ancestralHome} onChange={e => setAncestralHome(e.target.value)} />
-                            </div>
-                        </div>
-
-                        {/* 日期區域 (Two Column) */}
-                        <div style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr', 
-                            gap: '16px', 
-                            background: '#f8fafc', 
-                            padding: '10px', 
-                            borderRadius: '8px' 
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <label style={{ minWidth: '60px', fontSize: '13px', color: '#64748b' }}>{MEMBER_FIELDS.birth_date_full.label}</label>
-                                <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                                    <input style={{ width: '75px', padding: '6px', border: '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'center' }} placeholder="年份" value={birthYear} onChange={e => setBirthYear(e.target.value)} /> /
-                                    <input style={{ width: '45px', padding: '6px', border: '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'center' }} placeholder="月" value={birthMonth} onChange={e => setBirthMonth(e.target.value)} /> /
-                                    <input style={{ width: '45px', padding: '6px', border: '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'center' }} placeholder="日" value={birthDay} onChange={e => setBirthDay(e.target.value)} />
+                        {/* 日期區域：出生與死亡日期並行 */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div style={{ background: '#f8fafc', padding: '6px', borderRadius: '8px' }}>
+                                <label style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '2px' }}>出生日期</label>
+                                <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+                                    <input style={{ width: '55px', padding: '3px', border: '1px solid #e5e7eb', borderRadius: '4px', fontSize: '12px' }} placeholder="年" value={birthYear} onChange={e => setBirthYear(e.target.value)} />
+                                    <input style={{ width: '30px', padding: '3px', border: '1px solid #e5e7eb', borderRadius: '4px', fontSize: '12px' }} placeholder="月" value={birthMonth} onChange={e => setBirthMonth(e.target.value)} />
+                                    <input style={{ width: '30px', padding: '3px', border: '1px solid #e5e7eb', borderRadius: '4px', fontSize: '12px' }} placeholder="日" value={birthDay} onChange={e => setBirthDay(e.target.value)} />
                                 </div>
                             </div>
-                            {isDeceased && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <label style={{ minWidth: '60px', fontSize: '13px', color: '#64748b' }}>{MEMBER_FIELDS.death_date_full.label}</label>
-                                    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                                        <input style={{ width: '75px', padding: '6px', border: '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'center' }} placeholder="年份" value={deathYear} onChange={e => setDeathYear(e.target.value)} /> /
-                                        <input style={{ width: '45px', padding: '6px', border: '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'center' }} placeholder="月" value={deathMonth} onChange={e => setDeathMonth(e.target.value)} /> /
-                                        <input style={{ width: '45px', padding: '6px', border: '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'center' }} placeholder="日" value={deathDay} onChange={e => setDeathDay(e.target.value)} />
-                                    </div>
+                            <div style={{ background: isDeceased ? '#fff1f2' : '#f8fafc', padding: '6px', borderRadius: '8px', opacity: isDeceased ? 1 : 0.4 }}>
+                                <label style={{ fontSize: '10px', fontWeight: 'bold', color: isDeceased ? '#e11d48' : '#64748b', display: 'block', marginBottom: '2px' }}>死亡日期</label>
+                                <div style={{ display: 'flex', gap: '3px', alignItems: 'center', pointerEvents: isDeceased ? 'auto' : 'none' }}>
+                                    <input style={{ width: '55px', padding: '3px', border: '1px solid #e5e7eb', borderRadius: '4px', fontSize: '12px' }} placeholder="年" value={deathYear} onChange={e => setDeathYear(e.target.value)} />
+                                    <input style={{ width: '30px', padding: '3px', border: '1px solid #e5e7eb', borderRadius: '4px', fontSize: '12px' }} placeholder="月" value={deathMonth} onChange={e => setDeathMonth(e.target.value)} />
+                                    <input style={{ width: '30px', padding: '3px', border: '1px solid #e5e7eb', borderRadius: '4px', fontSize: '12px' }} placeholder="日" value={deathDay} onChange={e => setDeathDay(e.target.value)} />
                                 </div>
-                            )}
-                        </div>
-
-                        {/* 鏈結區域 (Grid) */}
-                        <div style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr', 
-                            gap: '12px' 
-                        }}>
-                            <SearchableSelector label="父親" value={fatherId} options={maleMembers} allMembers={allMembers} onChange={setFatherId} gender="male" horizontal />
-                            <SearchableSelector label="母親" value={motherId} options={femaleMembers} allMembers={allMembers} onChange={setMotherId} gender="female" horizontal />
-                        </div>
-                        
-                        {/* 配偶維護 + 離婚功能 */}
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', background: '#fff7ed', padding: '12px', borderRadius: '8px', border: '1px solid #ffedd5' }}>
-                            <div style={{ flex: 1 }}>
-                                <SearchableSelector 
-                                    label="配偶" value={spouses[0] || ''} options={otherMembers} allMembers={allMembers} 
-                                    onChange={(val) => setSpouses(val ? [val] : [])} horizontal 
-                                />
                             </div>
-                            {spouses[0] && (
-                                <button 
-                                    type="button"
-                                    onClick={() => setIsDivorcing(!isDivorcing)}
-                                    style={{ 
-                                        marginTop: '10px', padding: '6px 12px', borderRadius: '6px', 
-                                        border: '1px solid #f97316', background: isDivorcing ? '#f97316' : 'white', 
-                                        color: isDivorcing ? 'white' : '#f97316', fontSize: '12px', cursor: 'pointer',
-                                        display: 'flex', alignItems: 'center', gap: '4px'
-                                    }}
-                                >
-                                    <HeartOff size={14} /> 辦理離婚
-                                </button>
-                            )}
                         </div>
 
-                        {isDivorcing && (
-                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} style={{ padding: '10px', background: '#fff', border: '1px dashed #f97316', borderRadius: '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <label style={{ fontSize: '13px', color: '#f97316' }}>離婚日期:</label>
-                                    <input type="date" value={divorceDate} onChange={e => setDivorceDate(e.target.value)} style={{ padding: '5px', borderRadius: '4px', border: '1px solid #ddd' }} />
+                        {/* 關係區域：父母與配偶 */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div style={{ background: '#f8fafc', padding: '6px', borderRadius: '8px' }}>
+                                <label style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '2px' }}>父親</label>
+                                <SearchableSelector value={fatherId} options={maleMembers} allMembers={allMembers} onChange={setFatherId} gender="male" compact />
+                            </div>
+                            <div style={{ background: '#f8fafc', padding: '6px', borderRadius: '8px' }}>
+                                <label style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '2px' }}>母親</label>
+                                <SearchableSelector value={motherId} options={femaleMembers} allMembers={allMembers} onChange={setMotherId} gender="female" compact />
+                            </div>
+                        </div>
+
+                        <div style={{ background: '#f8fafc', padding: '6px', borderRadius: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                <label style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b' }}>配偶</label>
+                                {spouses[0] && (
                                     <button 
-                                        type="button" onClick={handleDivorce}
-                                        style={{ padding: '6px 16px', background: '#f97316', color: 'white', border: 'none', borderRadius: '4px', fontWeight: '600', cursor: 'pointer' }}
+                                        type="button"
+                                        onClick={handleDivorce}
+                                        disabled={isDivorcing}
+                                        style={{ 
+                                            fontSize: '10px', color: '#e11d48', background: 'none', border: 'none', 
+                                            cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' 
+                                        }}
                                     >
-                                        確認離婚登記
+                                        {isDivorcing ? '處理中...' : '辦理離婚'}
                                     </button>
-                                </div>
-                             </motion.div>
-                        )}
-
-                        <div style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1.5fr', 
-                            gap: '12px' 
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <label style={{ minWidth: '40px', fontSize: '13px' }}>{MEMBER_FIELDS.phone.label}</label>
-                                <input style={{ flex: 1, padding: '7px', border: '1px solid #e5e7eb', borderRadius: '4px' }} value={phone} onChange={e => setPhone(e.target.value)} />
+                                )}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <label style={{ minWidth: '40px', fontSize: '13px' }}>{MEMBER_FIELDS.email.label}</label>
-                                <input style={{ flex: 1, padding: '7px', border: '1px solid #e5e7eb', borderRadius: '4px' }} type="email" value={email} onChange={e => setEmail(e.target.value)} />
+                            <SearchableSelector value={spouses[0] || ''} options={otherMembers} allMembers={allMembers} onChange={(val) => setSpouses(val ? [val] : [])} compact />
+                        </div>
+
+                        {/* 地理與詳細地址 (Province/City/Address) */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                            <label style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold' }}>居住地址</label>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                                <button type="button" onClick={() => handleCopyParentAddress('father')} style={{ border: 'none', background: '#f0f9ff', color: '#0369a1', fontSize: '9px', padding: '1px 6px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>🏠 同父</button>
+                                <button type="button" onClick={() => handleCopyParentAddress('mother')} style={{ border: 'none', background: '#fdf2f8', color: '#be185d', fontSize: '9px', padding: '1px 6px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>🏠 同母</button>
+                            </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '0.7fr 0.7fr 2fr', gap: '6px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ fontSize: '10px', color: '#64748b' }}>省/州</label>
+                                <input style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '12px' }} placeholder="省" value={province} onChange={e => setProvince(e.target.value)} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ fontSize: '10px', color: '#64748b' }}>城市</label>
+                                <input style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '12px' }} placeholder="市" value={city} onChange={e => setCity(e.target.value)} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ fontSize: '10px', color: '#64748b' }}>詳細地址</label>
+                                <input style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '12px' }} placeholder="詳細地址..." value={address} onChange={e => setAddress(e.target.value)} />
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <label style={{ minWidth: '40px', fontSize: '13px' }}>{MEMBER_FIELDS.remark.label}</label>
-                            <input style={{ flex: 1, padding: '7px', border: '1px solid #e5e7eb', borderRadius: '4px' }} value={remark} onChange={e => setRemark(e.target.value)} />
+                        {/* 社交組 & 電話組 (手機端適配) */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <label style={{ minWidth: '35px', fontSize: '10px', color: '#10b981', fontWeight: 'bold' }}>微信</label>
+                                <input style={{ flex: 1, padding: '3px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '12px' }} value={wechat} onChange={e => setWechat(e.target.value)} />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <label style={{ minWidth: '35px', fontSize: '10px', color: '#00b900', fontWeight: 'bold' }}>Line</label>
+                                <input style={{ flex: 1, padding: '3px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '12px' }} value={line} onChange={e => setLine(e.target.value)} />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <label style={{ minWidth: '35px', fontSize: '10px', color: '#64748b' }}>郵件</label>
+                                <input style={{ flex: 1, padding: '3px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '12px' }} value={email} onChange={e => setEmail(e.target.value)} />
+                            </div>
                         </div>
 
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                             <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ fontSize: '10px', color: '#64748b' }}>電話1</label>
+                                <input style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '12px' }} value={phone} onChange={e => setPhone(e.target.value)} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ fontSize: '10px', color: '#64748b' }}>電話2</label>
+                                <input style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '12px' }} value={phone2} onChange={e => setPhone2(e.target.value)} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ fontSize: '10px', color: '#64748b' }}>電話3</label>
+                                <input style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '12px' }} value={phone3} onChange={e => setPhone3(e.target.value)} />
+                            </div>
+                        </div>
+
+                        {/* 備註 (Bottom Full Width) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                            <label style={{ fontSize: '10px', color: '#64748b' }}>備註</label>
+                            <input style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '12px' }} value={remark} onChange={e => setRemark(e.target.value)} placeholder="備註說明..." />
+                        </div>
+
+                        {/* 按鈕區域 */}
                         <div style={{ 
-                            marginTop: '4px', paddingTop: '12px', borderTop: '1px solid #f1f5f9',
+                            marginTop: '6px', paddingTop: '8px', borderTop: '1px solid #f1f5f9',
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                         }}>
                             <button 
                                 type="button"
                                 onClick={() => onDelete(member.id)}
                                 style={{ 
-                                    display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', 
-                                    borderRadius: '8px', background: '#fff1f2', color: '#e11d48', border: 'none',
-                                    fontWeight: '600', cursor: 'pointer'
+                                    padding: '4px 8px', borderRadius: '6px', background: '#fff1f2', color: '#e11d48', border: 'none',
+                                    fontWeight: 'bold', fontSize: '11px', cursor: 'pointer'
                                 }}
                             >
-                                <Trash2 size={16} /> 刪除成員
+                                <Trash2 size={14} /> 刪除
                             </button>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <button type="button" onClick={onCancel} style={{ padding: '8px 20px', borderRadius: '8px', background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }}>取消</button>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                <button type="button" onClick={onCancel} style={{ padding: '4px 12px', borderRadius: '6px', background: 'white', border: '1px solid #e2e8f0', fontSize: '12px', cursor: 'pointer' }}>取消</button>
                                 <button 
                                     type="button" onClick={handleSubmit} disabled={saving}
                                     style={{ 
-                                        display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 30px', 
-                                        borderRadius: '8px', background: 'var(--accent-color)', color: 'white', border: 'none',
-                                        fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                        padding: '5px 20px', borderRadius: '6px', background: 'var(--accent-color)', color: 'white', border: 'none',
+                                        fontWeight: 'bold', fontSize: '12px', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
                                     }}
                                 >
-                                    <Save size={16} /> {saving ? '保存中...' : '保存內容'}
+                                    <Save size={14} /> {saving ? '...' : '保存內容'}
                                 </button>
                             </div>
                         </div>

@@ -368,14 +368,115 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('Error opening database', err.message);
-    } else {
-        console.log('Connected to the SQLite database.');
+let db;
 
-        // Create members table with enhanced structure
-        db.run(`CREATE TABLE IF NOT EXISTS members (
+if (process.env.DATABASE_URL) {
+    console.log('Detected DATABASE_URL, switching to PostgreSQL Mode via PgWrapper.');
+    const { Pool } = require('pg');
+    const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+    });
+
+    class PgWrapper {
+        serialize(callback) {
+            // PostgreSQL doesn't need serialize like SQLite does for setup blocks
+            callback();
+        }
+
+        _convertSql(sql) {
+            // Convert SQLite AUTOINCREMENT to Postgres SERIAL
+            let pgSql = sql.replace(/AUTOINCREMENT/gi, 'SERIAL')
+                           .replace(/INTEGER PRIMARY KEY SERIAL/gi, 'SERIAL PRIMARY KEY');
+            
+            // Convert json_extract(metadata, '$.size') to (metadata->>'size')
+            pgSql = pgSql.replace(/json_extract\(([^,]+),\s*'\$\.([^']+)'\)/gi, "($1->>'$2')");
+            
+            // Convert ? to $1, $2, $3...
+            let i = 1;
+            pgSql = pgSql.replace(/\?/g, () => `$${i++}`);
+
+            // If it's an INSERT statement without RETURNING, append RETURNING id
+            const isInsert = pgSql.trim().toUpperCase().startsWith('INSERT');
+            if (isInsert && !pgSql.toUpperCase().includes('RETURNING')) {
+                pgSql += ' RETURNING id';
+            }
+            return { pgSql, isInsert };
+        }
+
+        run(sql, params, callback) {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            if (!params) params = [];
+
+            const { pgSql, isInsert } = this._convertSql(sql);
+
+            pool.query(pgSql, params)
+                .then(res => {
+                    const changes = res.rowCount;
+                    let lastID = null;
+                    if (isInsert && res.rows.length > 0) {
+                        lastID = res.rows[0].id;
+                    }
+                    if (callback) callback.call({ changes, lastID }, null);
+                })
+                .catch(err => {
+                    if (callback) callback.call(this, err);
+                    else console.error('[PG Run Error]:', err.message, '\nSQL:', pgSql);
+                });
+        }
+
+        get(sql, params, callback) {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            if (!params) params = [];
+
+            const { pgSql } = this._convertSql(sql);
+            pool.query(pgSql, params)
+                .then(res => {
+                    if (callback) callback(null, res.rows[0] || null);
+                })
+                .catch(err => {
+                    if (callback) callback(err);
+                });
+        }
+
+        all(sql, params, callback) {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            if (!params) params = [];
+
+            const { pgSql } = this._convertSql(sql);
+            pool.query(pgSql, params)
+                .then(res => {
+                    if (callback) callback(null, res.rows);
+                })
+                .catch(err => {
+                    if (callback) callback(err);
+                });
+        }
+    }
+
+    db = new PgWrapper();
+} else {
+    db = new sqlite3.Database(dbPath, (err) => {
+        if (err) {
+            console.error('Error opening database', err.message);
+        } else {
+            console.log('Connected to the SQLite database.');
+        }
+    });
+}
+
+db.serialize(() => {
+    // Create members table with enhanced structure
+    db.run(`CREATE TABLE IF NOT EXISTS members (
       id TEXT PRIMARY KEY,
       family_tree_id TEXT,
       name TEXT,
@@ -436,7 +537,13 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     `ALTER TABLE members ADD COLUMN primaryFamily TEXT`,
                     `ALTER TABLE members ADD COLUMN families TEXT`,
                     `ALTER TABLE members ADD COLUMN surname TEXT`,
-                    `ALTER TABLE members ADD COLUMN given_name TEXT`
+                    `ALTER TABLE members ADD COLUMN given_name TEXT`,
+                    `ALTER TABLE members ADD COLUMN province TEXT`,
+                    `ALTER TABLE members ADD COLUMN city TEXT`,
+                    `ALTER TABLE members ADD COLUMN wechat TEXT`,
+                    `ALTER TABLE members ADD COLUMN line TEXT`,
+                    `ALTER TABLE members ADD COLUMN phone2 TEXT`,
+                    `ALTER TABLE members ADD COLUMN phone3 TEXT`
                 ];
                 
                 alterStatements.forEach(sql => {
@@ -865,7 +972,6 @@ LEFT JOIN user_family_trees ufr ON u.id = ufr.user_id
 `, (err) => {
             if (err) console.error('Error creating view:', err.message);
         });
-    }
 });
 
 // API Endpoints
@@ -1137,6 +1243,14 @@ app.post('/api/auth/register-with-invite', async (req, res) => {
             { expiresIn: JWT_EXPIRES_IN }
         );
         
+        // 獲取家族名稱以保持與 login 相同的資料結構
+        const familyTreeObj = await new Promise((resolve) => {
+            db.get(`SELECT name FROM family_trees WHERE id = ?`, [invitation.family_tree_id], (err, row) => {
+                if (err || !row) resolve({ name: '未命名家族' });
+                else resolve(row);
+            });
+        });
+        
         res.json({
             success: true,
             message: 'Registration successful',
@@ -1147,7 +1261,11 @@ app.post('/api/auth/register-with-invite', async (req, res) => {
                 name,
                 role: invitation.default_role,
                 linkedMemberId,
-                familyTrees: [invitation.family_tree_id]
+                familyTrees: [{
+                    id: invitation.family_tree_id,
+                    name: familyTreeObj.name,
+                    role: invitation.default_role
+                }]
             }
         });
         
@@ -1442,10 +1560,11 @@ app.post('/api/family', (req, res) => {
     let { id, name, surname, given_name, gender, spouses, children, parents,
         birth_date, birth_year, birth_month, birth_day, birth_calendar,
         death_date, death_year, death_month, death_day, death_calendar,
-        is_deceased, phone, email, address, remark, generation, clan_name,
+        is_deceased, phone, phone2, phone3, wechat, line, email, province, city, address, remark, generation, clan_name,
         ancestral_home, courtesy_name, pseudonym, aliases, education,
         occupation, achievements, biography, avatar_url, biography_md, privacy_settings,
-        primaryFamily, families } = req.body;
+        primaryFamily, families,
+        nationality, birth_place, religion, father_id, mother_id } = req.body;
 
     // ✨ 寫入邏輯統一：僅處理 primaryFamily 與 families
     let familyList = Array.isArray(families) ? families : (families ? [families] : []);
@@ -1466,7 +1585,16 @@ app.post('/api/family', (req, res) => {
     primaryFamily = mainFamily;
     families = familyList;
 
-    const sql = "INSERT INTO members (id, name, surname, given_name, gender, spouses, children, parents, birth_date, birth_year, birth_month, birth_day, birth_calendar, death_date, death_year, death_month, death_day, death_calendar, is_deceased, phone, email, address, remark, generation, clan_name, ancestral_home, courtesy_name, pseudonym, aliases, education, occupation, achievements, biography, avatar_url, biography_md, privacy_settings, primaryFamily, families) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    const sql = `INSERT INTO members (
+        id, name, surname, given_name, gender, spouses, children, parents, 
+        birth_date, birth_year, birth_month, birth_day, birth_calendar, 
+        death_date, death_year, death_month, death_day, death_calendar, 
+        is_deceased, phone, phone2, phone3, wechat, line, email, province, city, address, remark, 
+        generation, clan_name, ancestral_home, courtesy_name, pseudonym, aliases, 
+        education, occupation, achievements, biography, avatar_url, biography_md, 
+        privacy_settings, primaryFamily, families,
+        nationality, birth_place, religion, father_id, mother_id
+    ) VALUES (${Array(49).fill('?').join(', ')})`;
 
     const params = [
         id,
@@ -1474,9 +1602,9 @@ app.post('/api/family', (req, res) => {
         surname || '',
         given_name || '',
         gender,
-        JSON.stringify(spouses || []),
-        JSON.stringify(children || []),
-        JSON.stringify(parents || []),
+        smartStringify(spouses || []),
+        smartStringify(children || []),
+        smartStringify(parents || []),
         birth_date,
         birth_year,
         birth_month,
@@ -1489,7 +1617,13 @@ app.post('/api/family', (req, res) => {
         death_calendar,
         is_deceased ? 1 : 0,
         phone,
+        phone2,
+        phone3,
+        wechat,
+        line,
         email,
+        province,
+        city,
         address,
         remark,
         generation,
@@ -1497,16 +1631,21 @@ app.post('/api/family', (req, res) => {
         ancestral_home,
         courtesy_name,
         pseudonym,
-        JSON.stringify(aliases || []),
+        smartStringify(aliases || []),
         education,
         occupation,
-        JSON.stringify(achievements || []),
+        smartStringify(achievements || []),
         biography,
         avatar_url,
         biography_md,
-        JSON.stringify(privacy_settings || {}),
+        smartStringify(privacy_settings || {}),
         primaryFamily,
-        JSON.stringify(families)
+        smartStringify(families),
+        nationality,
+        birth_place,
+        religion,
+        father_id,
+        mother_id
     ];
 
     db.run(sql, params, function (err) {
@@ -1531,7 +1670,7 @@ app.put('/api/family/:id', authenticateToken, (req, res) => {
     let { name, surname, given_name, gender, spouses, children, parents,
         birth_date, birth_year, birth_month, birth_day, birth_calendar,
         death_date, death_year, death_month, death_day, death_calendar,
-        is_deceased, phone, email, address, remark, generation, clan_name,
+        is_deceased, phone, phone2, phone3, wechat, line, email, province, city, address, remark, generation, clan_name,
         ancestral_home, courtesy_name, pseudonym, aliases, education,
         occupation, achievements, biography, avatar_url, biography_md, privacy_settings,
         primaryFamily, families,
@@ -1574,7 +1713,13 @@ app.put('/api/family/:id', authenticateToken, (req, res) => {
       death_calendar = COALESCE(?, death_calendar),
       is_deceased = COALESCE(?, is_deceased),
       phone = COALESCE(?, phone),
+      phone2 = COALESCE(?, phone2),
+      phone3 = COALESCE(?, phone3),
+      wechat = COALESCE(?, wechat),
+      line = COALESCE(?, line),
       email = COALESCE(?, email),
+      province = COALESCE(?, province),
+      city = COALESCE(?, city),
       address = COALESCE(?, address),
       remark = COALESCE(?, remark),
       generation = COALESCE(?, generation),
@@ -1619,7 +1764,13 @@ app.put('/api/family/:id', authenticateToken, (req, res) => {
         death_calendar === undefined ? null : death_calendar,
         is_deceased !== undefined ? (is_deceased ? 1 : 0) : null,
         phone === undefined ? null : phone,
+        phone2 === undefined ? null : phone2,
+        phone3 === undefined ? null : phone3,
+        wechat === undefined ? null : wechat,
+        line === undefined ? null : line,
         email === undefined ? null : email,
+        province === undefined ? null : province,
+        city === undefined ? null : city,
         address === undefined ? null : address,
         remark === undefined ? null : remark,
         generation === undefined ? null : generation,
@@ -2127,6 +2278,49 @@ app.put('/api/user/:userId/fair-use-limit', authenticateToken, async (req, res) 
         db.run('UPDATE users SET fair_use_limit_mb = ? WHERE id = ?', [limit_mb, targetUserId], (err) => {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ message: '用戶公平限額已更新', userId: targetUserId, limit_mb });
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 新增：超級管理員 - 獲取系統所有家族的存儲狀況
+app.get('/api/admin/families-usage', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'super_admin') {
+            return res.status(403).json({ error: '僅限超級管理員訪問此全局數據' });
+        }
+        const sql = `
+            SELECT ft.id, ft.name, ft.storage_limit_mb,
+            (SELECT COUNT(*) FROM members WHERE primaryFamily = ft.id OR families LIKE '%' || ft.id || '%') as memberCount,
+            (SELECT SUM(used_storage_kb) FROM users u 
+             JOIN user_family_trees uft ON u.id = uft.user_id 
+             WHERE uft.family_tree_id = ft.id) as totalUsedKb
+            FROM family_trees ft
+        `;
+        db.all(sql, [], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json(rows || []);
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 新增：超級管理員 - 獲取系統所有用戶的存儲狀況
+app.get('/api/admin/users-usage', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'super_admin') {
+            return res.status(403).json({ error: '僅限超級管理員訪問此全局數據' });
+        }
+        // 注意：users 表中沒有 role 欄位，權限是基於家族綁定的
+        const sql = `
+            SELECT u.id, u.username, u.email, u.full_name, u.fair_use_limit_mb, u.used_storage_kb
+            FROM users u
+        `;
+        db.all(sql, [], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json(rows || []);
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -2697,16 +2891,21 @@ app.get('/api/user/storage', authenticateToken, (req, res) => {
     });
 });
 
-// Update media metadata (description, photo_date, etc.)
+// Update media metadata (title, description, photo_date, etc.)
 app.put('/api/media/:id', optionalAuth, (req, res) => {
     const mediaId = req.params.id;
-    const { description, photo_date, metadata } = req.body;
+    const { title, description, photo_date, metadata } = req.body;
     
-    console.log('[Update Media] Request:', { mediaId, description, photo_date });
+    console.log('[Update Media] Request:', { mediaId, title, description, photo_date });
     
     // Build dynamic SQL based on provided fields
     const updates = [];
     const params = [];
+    
+    if (title !== undefined) {
+        updates.push("title = ?");
+        params.push(title);
+    }
     
     if (description !== undefined) {
         updates.push("description = ?");
@@ -2747,6 +2946,30 @@ app.put('/api/media/:id', optionalAuth, (req, res) => {
             success: true,
             message: 'Media updated successfully',
             changes: this.changes
+        });
+    });
+});
+
+// Delete media and its face embeddings
+app.delete('/api/media/:id', optionalAuth, (req, res) => {
+    const mediaId = req.params.id;
+    
+    // First delete associated face embeddings to avoid orphaned records
+    db.run("DELETE FROM face_embeddings WHERE media_id = ?", [mediaId], (err) => {
+        if (err) console.error('[Delete Media] Failed to delete face embeddings:', err.message);
+        
+        // Then delete the media record
+        db.run("DELETE FROM media WHERE id = ?", [mediaId], function(err) {
+            if (err) {
+                return res.status(400).json({ error: err.message });
+            }
+            if (this.changes === 0) {
+                return res.status(404).json({ error: 'Media not found' });
+            }
+            res.json({
+                success: true,
+                message: 'Media deleted successfully'
+            });
         });
     });
 });
@@ -3039,7 +3262,30 @@ app.get('/api/face-embeddings/:media_id', (req, res) => {
     });
 });
 
-app.delete('/api/face-embeddings/:tag_id', authenticateToken, (req, res) => {
+app.get('/api/face-embeddings/family/:family_id', (req, res) => {
+    const sql = `
+        SELECT f.*, m.name as member_name 
+        FROM face_embeddings f
+        JOIN members m ON f.member_id = m.id
+        WHERE m.family_tree_id = ? AND f.embedding_data IS NOT NULL
+    `;
+    db.all(sql, [req.params.family_id], (err, rows) => {
+        if (err) {
+            res.status(400).json({ "error": err.message });
+            return;
+        }
+        // Filter to keep only the latest vector per member
+        const uniqueMembers = {};
+        for (const row of rows) {
+            if (!uniqueMembers[row.member_id] || uniqueMembers[row.member_id].id < row.id) {
+                uniqueMembers[row.member_id] = row;
+            }
+        }
+        res.json(Object.values(uniqueMembers));
+    });
+});
+
+app.delete('/api/face-embeddings/:tag_id', optionalAuth, (req, res) => {
     const tagId = req.params.tag_id;
     
     db.run("DELETE FROM face_embeddings WHERE id = ?", [tagId], function(err) {

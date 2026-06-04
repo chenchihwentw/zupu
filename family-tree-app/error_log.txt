@@ -20,3 +20,9 @@
     at Function.route (I:\proj\zupu\family-tree-app\node_modules\express\lib\application.js:257:22)
     at app.<computed> [as get] (I:\proj\zupu\family-tree-app\node_modules\express\lib\application.js:478:22)
     at Object.<anonymous> (I:\proj\zupu\family-tree-app\server.cjs:3258:7)
+[2026-04-20T23:58:29.726Z] UNCAUGHT_EXCEPTION: Error: SQLITE_BUSY: database is locked
+[2026-04-20T23:58:40.556Z] UNCAUGHT_EXCEPTION: Error: SQLITE_BUSY: database is locked
+[2026-04-21T00:01:11.049Z] UNCAUGHT_EXCEPTION: Error: SQLITE_BUSY: database is locked
+[2026-04-21T06:25:50.341Z] UNCAUGHT_EXCEPTION: Error: SQLITE_BUSY: database is locked
+[2026-04-21T06:27:26.799Z] UNCAUGHT_EXCEPTION: Error: SQLITE_BUSY: database is locked
+[2026-04-21T06:55:49.957Z] UNCAUGHT_EXCEPTION: Error: SQLITE_BUSY: database is locked

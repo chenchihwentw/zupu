@@ -3,7 +3,7 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Search, Camera, X, Check } from 'lucide-react';
 
-const SearchableSelector = ({ label, value, onSelect, placeholder, gender, allMembers }) => {
+const SearchableSelector = ({ label, value, onSelect, placeholder, gender, allMembers, compact = false }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isOpen, setIsOpen] = useState(false);
     const [searchResults, setSearchResults] = useState([]);
@@ -62,35 +62,35 @@ const SearchableSelector = ({ label, value, onSelect, placeholder, gender, allMe
     }, [searchTerm, gender]);
 
     return (
-        <div style={{ marginBottom: '16px', position: 'relative' }}>
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '13px', color: '#4b5563' }}>{label}</label>
+        <div style={{ marginBottom: compact ? '4px' : '16px', position: 'relative' }}>
+            {label && <label style={{ display: 'block', marginBottom: '2px', fontWeight: '600', fontSize: '10px', color: '#4b5563' }}>{label}</label>}
             <div 
                 onClick={() => setIsOpen(!isOpen)}
                 style={{
-                    padding: '10px 14px',
-                    borderRadius: '8px',
+                    padding: compact ? '4px 8px' : '10px 14px',
+                    borderRadius: '6px',
                     border: '1px solid #e5e7eb',
                     background: 'white',
                     cursor: 'pointer',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    minHeight: '42px'
+                    minHeight: compact ? '28px' : '42px'
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
                     {selectedMember ? (
                         <>
-                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                                {selectedMember.avatar_url ? <img src={selectedMember.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <User size={14} />}
+                            <div style={{ width: compact ? '18px' : '24px', height: compact ? '18px' : '24px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                                {selectedMember.avatar_url ? <img src={selectedMember.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <User size={compact ? 10 : 14} />}
                             </div>
-                            <span style={{ fontSize: '14px' }}>{selectedMember.name} <small style={{ color: '#9ca3af' }}>({selectedMember.id})</small></span>
+                            <span style={{ fontSize: compact ? '12px' : '14px' }}>{selectedMember.name}</span>
                         </>
                     ) : (
-                        <span style={{ color: '#9ca3af', fontSize: '14px' }}>{placeholder || '搜尋或選擇...'}</span>
+                        <span style={{ color: '#9ca3af', fontSize: compact ? '11px' : '14px' }}>{placeholder || '搜尋...'}</span>
                     )}
                 </div>
-                <Search size={16} color="#9ca3af" />
+                <Search size={compact ? 12 : 16} color="#9ca3af" />
             </div>
 
             <AnimatePresence>
@@ -182,6 +182,12 @@ const AddRelativeModal = ({ baseMember, relativeType, allMembers, onSave, onCanc
     const [ancestralHome, setAncestralHome] = useState('');
     const [courtesyName, setCourtesyName] = useState('');
     const [occupation, setOccupation] = useState('');
+    const [province, setProvince] = useState('');
+    const [city, setCity] = useState('');
+    const [wechat, setWechat] = useState('');
+    const [line, setLine] = useState('');
+    const [phone2, setPhone2] = useState('');
+    const [phone3, setPhone3] = useState('');
     
     // Birth date fields
     const [birthYear, setBirthYear] = useState('');
@@ -206,15 +212,13 @@ const AddRelativeModal = ({ baseMember, relativeType, allMembers, onSave, onCanc
     const [fatherId, setFatherId] = useState('');
     const [motherId, setMotherId] = useState('');
     const [spouseId, setSpouseId] = useState('');
-    const [marriageDate, setMarriageDate] = useState(''); // ✨ 新增婚姻日期
+    const [marriageDate, setMarriageDate] = useState('');
 
-    // Pre-fill logic correctly
     useEffect(() => {
         switch (relativeType) {
             case 'child':
                 if (baseMember.gender === 'male') setFatherId(baseMember.id);
                 else setMotherId(baseMember.id);
-                
                 if (baseMember.spouses?.length > 0) {
                     const spouse = allMembers.find(m => m.id === baseMember.spouses[0]);
                     if (spouse) {
@@ -238,6 +242,22 @@ const AddRelativeModal = ({ baseMember, relativeType, allMembers, onSave, onCanc
         }
     }, [baseMember, relativeType, allMembers]);
 
+    const handleCopyParentAddress = (type) => {
+        const parentId = type === 'father' ? fatherId : motherId;
+        const parent = allMembers.find(m => m.id === parentId);
+        if (!parent) return alert(`請先選擇${type === 'father' ? '父親' : '母親'}`);
+        
+        if (parent.province) setProvince(parent.province);
+        if (parent.city) setCity(parent.city);
+        if (parent.address) setAddress(parent.address);
+    };
+
+    const handleCopyBaseAddress = () => {
+        if (baseMember.province) setProvince(baseMember.province);
+        if (baseMember.city) setCity(baseMember.city);
+        if (baseMember.address) setAddress(baseMember.address);
+    };
+
     const getTitle = () => {
         switch (relativeType) {
             case 'parent': return `為 ${baseMember.name} 添加父母`;
@@ -251,7 +271,7 @@ const AddRelativeModal = ({ baseMember, relativeType, allMembers, onSave, onCanc
     const handleSubmit = async (e) => {
         if (e) e.preventDefault();
         const fullName = (surname + givenName).trim();
-        if (!fullName) return alert('請輸入姓名（至少填寫「姓」或「名」）');
+        if (!fullName) return alert('請輸入姓名');
         
         setSaving(true);
         const newParents = [];
@@ -269,6 +289,9 @@ const AddRelativeModal = ({ baseMember, relativeType, allMembers, onSave, onCanc
             ancestral_home: ancestralHome,
             courtesy_name: courtesyName,
             occupation,
+            province, city,
+            wechat, line,
+            phone2, phone3,
             birth_year: birthYear ? parseInt(birthYear) : null,
             birth_month: birthMonth ? parseInt(birthMonth) : null,
             birth_day: birthDay ? parseInt(birthDay) : null,
@@ -279,198 +302,139 @@ const AddRelativeModal = ({ baseMember, relativeType, allMembers, onSave, onCanc
             email, phone, address, remark,
             avatar_url: avatarUrl,
             parents: newParents,
-            father_id: fatherId || null,
-            mother_id: motherId || null,
             spouses: spouseId ? [spouseId] : [],
-            children: [],
-            marriage_date: marriageDate // ✨ 傳遞婚姻日期
+            marriage_date: marriageDate
         };
         
         await onSave(newMember);
         setSaving(false);
     };
 
-    const handleAvatarUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        setAvatarUploading(true);
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('type', 'avatar');
-        try {
-            const res = await axios.post('/api/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-            if (res.data.success) setAvatarUrl(res.data.url);
-        } catch (err) {
-            console.error('Upload failed:', err);
-        } finally {
-            setAvatarUploading(false);
+    const styles = {
+        overlay: {
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex',
+            justifyContent: 'center', alignItems: 'flex-start', zIndex: 2000, 
+            padding: '2vh 0', overflowY: 'auto'
+        },
+        modal: {
+            backgroundColor: 'white', padding: '12px 18px', borderRadius: '16px',
+            width: '95%', maxWidth: '780px', maxHeight: 'none', minHeight: 'min-content',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.2)', border: '1px solid #eee',
+            margin: '20px auto'
+        },
+        header: {
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            marginBottom: '8px', paddingBottom: '6px', borderBottom: '1px solid #eee'
+        },
+        gridRow: {
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+            gap: '8px', marginBottom: '6px'
+        },
+        inputGroup: { display: 'flex', flexDirection: 'column', gap: '1px' },
+        label: { fontSize: '10px', fontWeight: 'bold', color: '#666' },
+        input: { padding: '4px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '12px', outline: 'none' },
+        actions: { 
+            display: 'flex', justifyContent: 'flex-end', gap: '8px', 
+            marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #eee' 
         }
     };
 
-    const styles = {
-        overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' },
-        modal: { backgroundColor: 'white', padding: '32px', borderRadius: '20px', width: '100%', maxWidth: '600px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto', border: '1px solid #f3f4f6' },
-        group: { marginBottom: '20px' },
-        label: { display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px', color: '#374151' },
-        input: { width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e5e7eb', fontSize: '15px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' },
-        infoBox: { background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', borderRadius: '12px', padding: '16px', marginBottom: '24px', fontSize: '14px', color: '#0369a1', border: '1px solid #bae6fd' },
-        sectionTitle: { fontSize: '13px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid #f1f5f9' }
-    };
-
     return (
-        <div style={styles.overlay}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={styles.modal}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '800' }}>{getTitle()}</h2>
-                    <button onClick={onCancel} style={{ background: '#f3f4f6', border: 'none', padding: '8px', borderRadius: '50%', cursor: 'pointer' }}><X size={20} /></button>
-                </div>
-                
-                <div style={styles.infoBox}>
-                    已選定基準成員: <strong>{baseMember.name}</strong>
+        <div style={styles.overlay} onClick={onCancel}>
+            <div style={styles.modal} onClick={e => e.stopPropagation()}>
+                <div style={styles.header}>
+                    <h3 style={{ margin: 0, color: '#333', fontSize: '16px' }}>{getTitle()}</h3>
+                    <button onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#999' }}>&times;</button>
                 </div>
 
                 <form onSubmit={handleSubmit}>
-                    {/* ── 基本資料 ── */}
-                    <p style={styles.sectionTitle}>基本資料</p>
-
-                    {/* 姓 + 名 + 性別 */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-                        <div>
-                            <label style={styles.label}>姓 *</label>
-                            <input style={styles.input} value={surname} onChange={e => setSurname(e.target.value)} placeholder="如：陳" />
-                        </div>
-                        <div>
-                            <label style={styles.label}>名 *</label>
-                            <input style={styles.input} value={givenName} onChange={e => setGivenName(e.target.value)} placeholder="如：志明" />
-                        </div>
-                        <div>
+                    <div style={styles.gridRow}>
+                        <div style={styles.inputGroup}><label style={styles.label}>姓</label><input style={styles.input} value={surname} onChange={e => setSurname(e.target.value)} required /></div>
+                        <div style={styles.inputGroup}><label style={styles.label}>名</label><input style={styles.input} value={givenName} onChange={e => setGivenName(e.target.value)} required /></div>
+                        <div style={styles.inputGroup}>
                             <label style={styles.label}>性別</label>
                             <select style={styles.input} value={gender} onChange={e => setGender(e.target.value)}>
                                 <option value="male">男</option>
                                 <option value="female">女</option>
                             </select>
                         </div>
-                    </div>
-
-                    {/* 字/號 + 祖籍 */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-                        <div>
-                            <label style={styles.label}>字 / 號</label>
-                            <input style={styles.input} value={courtesyName} onChange={e => setCourtesyName(e.target.value)} placeholder="如：懷遠" />
-                        </div>
-                        <div>
-                            <label style={styles.label}>祖籍</label>
-                            <input style={styles.input} value={ancestralHome} onChange={e => setAncestralHome(e.target.value)} placeholder="如：福建泉州" />
+                        <div style={{ ...styles.inputGroup, height: '100%', justifyContent: 'center' }}>
+                            <label style={{ ...styles.label, display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', marginTop: '14px' }}>
+                                <input type="checkbox" checked={isDeceased} onChange={e => setIsDeceased(e.target.checked)} />
+                                已過世
+                            </label>
                         </div>
                     </div>
 
-                    {/* 國籍 + 出生地 */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-                        <div>
-                            <label style={styles.label}>國籍</label>
-                            <input style={styles.input} value={nationality} onChange={e => setNationality(e.target.value)} placeholder="如：中國" />
-                        </div>
-                        <div>
-                            <label style={styles.label}>出生地</label>
-                            <input style={styles.input} value={birthPlace} onChange={e => setBirthPlace(e.target.value)} placeholder="如：廈門" />
-                        </div>
-                    </div>
-
-                    {/* 職業 */}
-                    <div style={styles.group}>
-                        <label style={styles.label}>職業</label>
-                        <input style={styles.input} value={occupation} onChange={e => setOccupation(e.target.value)} placeholder="如：商人、農民、教師" />
-                    </div>
-
-                    {/* ── 出生/過世 ── */}
-                    <p style={styles.sectionTitle}>生卒日期</p>
-
-                    <div style={styles.group}>
-                        <label style={styles.label}>出生日期</label>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <input style={{ ...styles.input, flex: 2 }} type="number" placeholder="年 (YYYY)" value={birthYear} onChange={e => setBirthYear(e.target.value)} />
-                            <input style={{ ...styles.input, flex: 1 }} type="number" placeholder="月" value={birthMonth} onChange={e => setBirthMonth(e.target.value)} />
-                            <input style={{ ...styles.input, flex: 1 }} type="number" placeholder="日" value={birthDay} onChange={e => setBirthDay(e.target.value)} />
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                        <input type="checkbox" checked={isDeceased} onChange={e => setIsDeceased(e.target.checked)} id="deceased-check" />
-                        <label htmlFor="deceased-check" style={{ fontSize: '14px', fontWeight: '500' }}>已過世</label>
-                    </div>
-
-                    {isDeceased && (
-                        <div style={styles.group}>
-                            <label style={styles.label}>過世日期</label>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <input style={{ ...styles.input, flex: 2 }} type="number" placeholder="年 (YYYY)" value={deathYear} onChange={e => setDeathYear(e.target.value)} />
-                                <input style={{ ...styles.input, flex: 1 }} type="number" placeholder="月" value={deathMonth} onChange={e => setDeathMonth(e.target.value)} />
-                                <input style={{ ...styles.input, flex: 1 }} type="number" placeholder="日" value={deathDay} onChange={e => setDeathDay(e.target.value)} />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── 關聯鏈結 ── */}
-                    <div style={{ padding: '20px', background: '#f9fafb', borderRadius: '16px', marginBottom: '24px' }}>
-                        <p style={{ ...styles.sectionTitle, borderBottom: 'none', marginBottom: '12px' }}>鏈結現有成員 (可選)</p>
-                        
-                        {(relativeType === 'child' || relativeType === 'sibling' || relativeType === 'parent') && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                <SearchableSelector 
-                                    label="父親" value={fatherId} onSelect={setFatherId} gender="male" 
-                                    allMembers={allMembers} placeholder="搜尋父親..."
-                                />
-                                <SearchableSelector 
-                                    label="母親" value={motherId} onSelect={setMotherId} gender="female" 
-                                    allMembers={allMembers} placeholder="搜尋母親..."
-                                />
-                            </div>
-                        )}
-                        
-                        {relativeType === 'spouse' && (
-                            <>
-                                <SearchableSelector 
-                                    label="配偶(自動填寫)" value={spouseId} onSelect={()=>{}} gender={gender ==='male'?'female':'male'}
-                                    allMembers={allMembers} placeholder="已選定基準成員"
-                                />
-                                <div style={styles.group}>
-                                    <label style={styles.label}>婚姻日期 (可選)</label>
-                                    <input 
-                                        type="date" 
-                                        style={styles.input} 
-                                        value={marriageDate} 
-                                        onChange={e => setMarriageDate(e.target.value)} 
-                                    />
+                    <div style={styles.gridRow}>
+                        <div style={styles.inputGroup}><label style={styles.label}>國籍</label><input style={styles.input} value={nationality} onChange={e => setNationality(e.target.value)} /></div>
+                        <div style={styles.inputGroup}><label style={styles.label}>職業</label><input style={styles.input} value={occupation} onChange={e => setOccupation(e.target.value)} /></div>
+                        <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                <label style={styles.label}>居住地址</label>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    <button type="button" onClick={handleCopyBaseAddress} style={{ border: 'none', background: '#f0fdf4', color: '#166534', fontSize: '9px', padding: '1px 6px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>🏠 同 {baseMember.name}</button>
+                                    <button type="button" onClick={() => handleCopyParentAddress('father')} style={{ border: 'none', background: '#f0f9ff', color: '#0369a1', fontSize: '9px', padding: '1px 6px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>🏠 同父</button>
+                                    <button type="button" onClick={() => handleCopyParentAddress('mother')} style={{ border: 'none', background: '#fdf2f8', color: '#be185d', fontSize: '9px', padding: '1px 6px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>🏠 同母</button>
                                 </div>
-                            </>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '0.7fr 0.7fr 2.6fr', gap: '8px' }}>
+                                <div style={styles.inputGroup}><label style={styles.label}>省/州</label><input style={styles.input} value={province} onChange={e => setProvince(e.target.value)} /></div>
+                                <div style={styles.inputGroup}><label style={styles.label}>市</label><input style={styles.input} value={city} onChange={e => setCity(e.target.value)} /></div>
+                                <div style={styles.inputGroup}><label style={styles.label}>詳細地址</label><input style={styles.input} value={address} onChange={e => setAddress(e.target.value)} /></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ ...styles.gridRow, gridTemplateColumns: 'repeat(2, 1fr)', background: '#f9fafb', padding: '6px', borderRadius: '8px' }}>
+                        <div style={styles.inputGroup}>
+                            <label style={styles.label}>出生日期</label>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                                <input style={{ ...styles.input, width: '60px' }} placeholder="年" value={birthYear} onChange={e => setBirthYear(e.target.value)} />
+                                <input style={{ ...styles.input, width: '35px' }} placeholder="月" value={birthMonth} onChange={e => setBirthMonth(e.target.value)} />
+                                <input style={{ ...styles.input, width: '35px' }} placeholder="日" value={birthDay} onChange={e => setBirthDay(e.target.value)} />
+                            </div>
+                        </div>
+                        {isDeceased && (
+                            <div style={styles.inputGroup}>
+                                <label style={styles.label}>死亡日期</label>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    <input style={{ ...styles.input, width: '60px' }} placeholder="年" value={deathYear} onChange={e => setDeathYear(e.target.value)} />
+                                    <input style={{ ...styles.input, width: '35px' }} placeholder="月" value={deathMonth} onChange={e => setDeathMonth(e.target.value)} />
+                                    <input style={{ ...styles.input, width: '35px' }} placeholder="日" value={deathDay} onChange={e => setDeathDay(e.target.value)} />
+                                </div>
+                            </div>
                         )}
-                        
-                        <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>
-                            💡 提示：輸入姓名搜尋已在數據庫中的人員，可避免重複創建。
-                        </p>
                     </div>
 
-                    {/* ── 聯繫資料 ── */}
-                    <p style={styles.sectionTitle}>聯繫資料（可選）</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                        <div style={styles.group}>
-                            <label style={styles.label}>聯繫電話</label>
-                            <input style={styles.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="+886..." />
+                    <div style={{ ...styles.gridRow, gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                        <div style={styles.inputGroup}><label style={styles.label}>WeChat</label><input style={styles.input} value={wechat} onChange={e => setWechat(e.target.value)} /></div>
+                        <div style={styles.inputGroup}><label style={styles.label}>Line</label><input style={styles.input} value={line} onChange={e => setLine(e.target.value)} /></div>
+                    </div>
+
+                    <div style={{ ...styles.gridRow, gridTemplateColumns: 'repeat(2, 1fr)', background: '#f8fafc', padding: '6px', borderRadius: '8px' }}>
+                        <div style={styles.inputGroup}>
+                            <SearchableSelector label="父親" value={fatherId} allMembers={allMembers} onSelect={setFatherId} gender="male" compact />
                         </div>
-                        <div style={styles.group}>
-                            <label style={styles.label}>電子郵件</label>
-                            <input style={styles.input} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" />
+                        <div style={styles.inputGroup}>
+                            <SearchableSelector label="母親" value={motherId} allMembers={allMembers} onSelect={setMotherId} gender="female" compact />
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '30px' }}>
-                        <button type="button" onClick={onCancel} style={{ flex: 1, padding: '14px', borderRadius: '12px', border: '1px solid #e5e7eb', background: 'white', fontWeight: '600', cursor: 'pointer' }}>取消</button>
-                        <button type="submit" disabled={saving} style={{ flex: 2, padding: '14px', borderRadius: '12px', border: 'none', background: 'var(--primary-color)', color: 'white', fontWeight: '700', cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(79, 70, 229, 0.3)' }}>
-                            {saving ? '保存中...' : '確認添加'}
+                    <div style={{ ...styles.inputGroup, marginTop: '2px' }}>
+                        <label style={styles.label}>備註</label>
+                        <input style={styles.input} value={remark} onChange={e => setRemark(e.target.value)} placeholder="補充說明..." />
+                    </div>
+
+                    <div style={styles.actions}>
+                        <button type="button" onClick={onCancel} style={{ padding: '5px 15px', borderRadius: '6px', background: 'white', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>取消</button>
+                        <button type="submit" disabled={saving} style={{ padding: '6px 25px', borderRadius: '6px', background: 'var(--accent-color)', color: 'white', border: 'none', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                            {saving ? '...' : '確認添加'}
                         </button>
                     </div>
                 </form>
-            </motion.div>
+            </div>
         </div>
     );
 };

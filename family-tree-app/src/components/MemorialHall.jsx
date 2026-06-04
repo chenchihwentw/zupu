@@ -30,6 +30,8 @@ const MemorialHall = () => {
   const [isRitualActive, setIsRitualActive] = useState(false);
   const [taggedPhotos, setTaggedPhotos] = useState([]);
   const [showRitualDrawer, setShowRitualDrawer] = useState(false);
+  const [showMemories, setShowMemories] = useState(true); // 💡 新增：回憶牆開關
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const audioRef = useRef(null);
 
   // 🖱️ 3D Parallax Mouse Tracking
@@ -147,6 +149,16 @@ const MemorialHall = () => {
     if (id) fetchData();
   }, [id]);
 
+  // 💡 自動輪播計時器
+  useEffect(() => {
+    if (showMemories && taggedPhotos.length > 1) {
+      const timer = setInterval(() => {
+        setCurrentPhotoIndex(prev => (prev + 1) % taggedPhotos.length);
+      }, 8000); // 每 8 秒切換一張，節奏緩慢莊重
+      return () => clearInterval(timer);
+    }
+  }, [showMemories, taggedPhotos.length]);
+
   const handleRitual = async () => {
     setIsRitualActive(true);
     const token = localStorage.getItem('token');
@@ -241,7 +253,56 @@ const MemorialHall = () => {
         />
       </motion.div>
 
-      {/* 🟢 Z-Layer 2: The Memorial Altar Structure */}
+      {/* 🟡 Z-Layer 2: Memory Slideshow (往事如煙層) */}
+      <AnimatePresence>
+        {showMemories && (taggedPhotos.length > 0 || member.avatar_url) && (
+          <motion.div
+            key={taggedPhotos[currentPhotoIndex]?.id || currentPhotoIndex}
+            initial={{ opacity: 0, scale: 1.1 }}
+            animate={{ opacity: 0.45, scale: 1 }} 
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 3 }}
+            style={{
+              position: 'absolute',
+              top: 0, left: 0, width: '100%', height: '100%',
+              zIndex: 2,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              pointerEvents: 'none',
+              overflow: 'hidden'
+            }}
+          >
+            <img 
+              src={(() => {
+                const photo = taggedPhotos[currentPhotoIndex];
+                if (!photo) return member.avatar_url;
+                const path = photo.file_path || photo.url || photo.path;
+                if (!path) return member.avatar_url;
+                return path.startsWith('http') || path.startsWith('/') ? path : `/${path}`;
+              })()} 
+              alt="Memory"
+              onError={(e) => {
+                e.target.style.display = 'none'; // 如果載入失敗則隱藏
+              }}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain', 
+                filter: 'sepia(0.3) brightness(0.8) blur(2px)' 
+              }}
+            />
+            {/* 漸變遮罩：讓邊緣與背景融合 */}
+            <div style={{
+              position: 'absolute',
+              top: 0, left: 0, right: 0, bottom: 0,
+              background: `radial-gradient(circle, transparent 20%, ${currentTheme.bg} 100%)`
+            }} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 🟢 Z-Layer 3: The Memorial Altar Structure */}
       <motion.div 
         style={{ 
           position: 'absolute',
@@ -458,6 +519,20 @@ const MemorialHall = () => {
                <MessageSquare size={24} />
              </button>
             )}
+            <button 
+              onClick={() => setShowMemories(!showMemories)}
+              style={{ 
+                background: showMemories ? currentTheme.color : 'rgba(255,255,255,0.1)',
+                border: 'none', 
+                color: 'white', 
+                width: '50px', height: '50px', borderRadius: '50%',
+                display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              title="開啟/關閉回憶展示"
+            >
+              <Camera size={24} />
+            </button>
             <button 
               onClick={toggleMusic}
               style={{ 

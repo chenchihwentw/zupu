@@ -14,7 +14,9 @@ import {
   Database,
   HelpCircle,
   ShieldCheck,
-  X
+  X,
+  Calendar,
+  Download
 } from 'lucide-react';
 import { AuthProvider } from './context/AuthContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
@@ -32,6 +34,9 @@ import TabletGenerator from './components/TabletGenerator';
 import MemorialHall from './components/MemorialHall';
 import AdminDashboard from './components/AdminDashboard';
 import ManualPage from './components/ManualPage';
+import CalendarPage from './components/CalendarPage';
+import FamilyTimeline from './components/FamilyTimeline';
+import ExportCenter from './components/ExportCenter';
 
 function App() {
   const [currentView, setCurrentView] = useState('tree'); // 'tree' or 'reunion'
@@ -115,34 +120,34 @@ const AppContent = () => {
         boxShadow: 'var(--shadow-md)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth < 768 ? '2px' : '8px' }}>
-          {window.innerWidth >= 768 && (
-            <>
-              <div style={{ 
-                backgroundColor: 'var(--primary-color)', 
-                color: 'white', 
-                width: '32px', 
-                height: '32px', 
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: '8px'
-              }}>
-                <TreeDeciduous size={18} />
-              </div>
-              <span style={{ 
-                fontFamily: 'var(--font-heading)', 
-                fontWeight: 800, 
-                fontSize: '20px', 
-                background: 'linear-gradient(45deg, var(--primary-color), var(--secondary-color))',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                marginRight: '20px'
-              }}>
-                Familia
-              </span>
-            </>
-          )}
+          <div 
+            onClick={() => navigate('/')}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+          >
+            <div style={{ 
+              backgroundColor: 'var(--primary-color)', 
+              color: 'white', 
+              width: '32px', 
+              height: '32px', 
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)'
+            }}>
+              <TreeDeciduous size={18} />
+            </div>
+            <span style={{ 
+              fontFamily: 'var(--font-heading)', 
+              fontWeight: 800, 
+              fontSize: window.innerWidth < 768 ? '18px' : '22px', 
+              background: 'linear-gradient(45deg, var(--primary-color), var(--secondary-color))',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>
+              {window.innerWidth < 768 ? 'F' : 'Familia'}
+            </span>
+          </div>
 
           {/* Global Family Switcher */}
           {isAuthenticated && user?.familyTrees?.length > 1 && (
@@ -180,10 +185,22 @@ const AppContent = () => {
           )}
 
           {/* Main Navigation Tabs */}
-          <div style={{ display: 'flex', gap: '2px', backgroundColor: 'rgba(0,0,0,0.03)', padding: '2px', borderRadius: 'var(--radius-full)' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: '2px', 
+            backgroundColor: 'rgba(0,0,0,0.03)', 
+            padding: '2px', 
+            borderRadius: 'var(--radius-full)',
+            marginLeft: 'auto',
+            overflowX: 'auto', // 💡 手機端必備：防止擠壓
+            scrollbarWidth: 'none'
+          }}>
             {[
               { id: 'tree', label: '家族樹', path: '/tree', icon: TreeDeciduous },
+              { id: 'timeline', label: '大事記', path: '/timeline', icon: BookOpen },
+              { id: 'calendar', label: '行事曆', path: '/calendar', icon: Calendar },
               { id: 'reunion', label: '尋親', path: '/reunion', icon: MessageSquare },
+              { id: 'export', label: '匯出', path: '/export', icon: Download },
               { id: 'manage', label: '管理', path: '/family/manage', icon: Settings },
               { id: 'tablet', label: '牌位', path: '/tablet', icon: Dna },
             ].map((item) => (
@@ -194,18 +211,16 @@ const AppContent = () => {
                   navigate(item.path);
                 }}
                 style={{
-                  padding: window.innerWidth < 768 ? '6px 8px' : '6px 16px',
+                  padding: window.innerWidth < 768 ? '5px 10px' : '6px 16px',
                   borderRadius: 'var(--radius-full)',
                   background: currentView === item.id ? 'white' : 'transparent',
                   color: currentView === item.id ? 'var(--primary-color)' : 'var(--text-muted)',
                   border: 'none',
-                  fontSize: '13px',
+                  fontSize: window.innerWidth < 768 ? '12px' : '14px',
                   fontWeight: 600,
-                  boxShadow: currentView === item.id ? 'var(--shadow-sm)' : 'none',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
-                  minWidth: window.innerWidth < 768 ? '40px' : 'auto',
                   justifyContent: 'center'
                 }}
                 title={item.label}
@@ -445,12 +460,24 @@ const AppContent = () => {
             <ReunionBoard />
           </PrivateRoute>
         } />
+        <Route path="/calendar" element={
+          <PrivateRoute>
+            <CalendarPage />
+          </PrivateRoute>
+        } />
+        <Route path="/timeline" element={
+          <PrivateRoute>
+            <FamilyTimeline />
+          </PrivateRoute>
+        } />
         <Route path="/member/:id" element={<PrivateRoute><MemberDetail /></PrivateRoute>} />
+        <Route path="/member/:id/album" element={<PrivateRoute><MemberDetail initialTab="photos" /></PrivateRoute>} />
         <Route path="/member/:id/edit" element={<PrivateRoute requiredRole="family_admin"><EditMemberPage /></PrivateRoute>} />
         <Route path="/member/:id/biography/edit" element={<PrivateRoute requiredRole="family_admin"><BiographyEditPage /></PrivateRoute>} />
         <Route path="/db-maintenance" element={<PrivateRoute requiredRole="super_admin"><DbMaintenance /></PrivateRoute>} />
         <Route path="/admin/dashboard" element={<PrivateRoute requiredRole="super_admin"><AdminDashboard /></PrivateRoute>} />
         <Route path="/family/manage" element={<PrivateRoute requiredRole="family_admin"><FamilyManagement /></PrivateRoute>} />
+        <Route path="/export" element={<PrivateRoute><ExportCenter /></PrivateRoute>} />
         <Route path="/tablet" element={<PrivateRoute><TabletGenerator /></PrivateRoute>} />
         <Route path="/memorial/:id" element={<PrivateRoute><MemorialHall user={user} /></PrivateRoute>} />
         <Route path="/manual" element={<ManualPage />} />
