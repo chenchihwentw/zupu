@@ -94,8 +94,11 @@
 
 <script setup>
 import { ref, computed, getCurrentInstance } from 'vue';
-import { onShow } from '@dcloudio/uni-app';
+import { onLoad, onShow } from '@dcloudio/uni-app';
 import request, { getFullUrl } from '@/utils/request';
+
+const { proxy } = getCurrentInstance();
+const t = proxy ? proxy.$t : (s) => s;
 
 const loading = ref(true);
 const deceasedMembers = ref([]);
@@ -199,10 +202,6 @@ const performRitual = (type) => {
   setTimeout(() => {
     const currentMember = deceasedMembers.value[currentIndex.value];
     if (!currentMember) return;
-
-    // 我們需要從全域取得 $t 來翻譯 JS 中的字串，因為這裡在 setup 中
-    const { proxy } = getCurrentInstance();
-    const t = proxy ? proxy.$t : (s) => s;
 
     uni.showModal({
       title: `${t('向')} ${currentMember.name} ${t('獻上思念')}`,

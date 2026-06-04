@@ -73,6 +73,10 @@ const members = ref([]);
 const loading = ref(true);
 const searchQuery = ref('');
 
+// 取得全域 proxy
+const { proxy } = getCurrentInstance();
+const t = proxy ? proxy.$t : (s) => s;
+
 // 家族切換相關狀態
 const familyTrees = ref([]);
 const activeFamilyId = ref('');
@@ -85,9 +89,6 @@ const activeFamilyIndex = computed(() => {
 
 const activeFamilyName = computed(() => {
   const f = familyTrees.value.find(f => f.id === activeFamilyId.value);
-  // 我們需要用到全域的 proxy 來拿到 $t，不過這是 computed，可以在 setup 裡取用
-  const { proxy } = getCurrentInstance();
-  const t = proxy ? proxy.$t : (s) => s;
   return f ? f.name || t('未命名家族') : t('選擇家族');
 });
 
@@ -115,8 +116,6 @@ const fetchMembers = async () => {
 };
 
 const handleLogout = () => {
-  const { proxy } = getCurrentInstance();
-  const t = proxy ? proxy.$t : (s) => s;
   uni.showModal({
     title: t('登出確認'),
     content: t('確定要登出目前的帳號嗎？'),

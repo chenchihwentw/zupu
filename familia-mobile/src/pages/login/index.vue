@@ -48,6 +48,8 @@
 import { reactive, ref, getCurrentInstance } from 'vue';
 import request from '@/utils/request';
 
+const { proxy } = getCurrentInstance();
+const t = proxy ? proxy.$t : (s) => s;
 const isRegistering = ref(false);
 
 const form = reactive({
@@ -69,9 +71,6 @@ const goToCreateFamily = () => {
 };
 
 const handleSubmit = async () => {
-  const { proxy } = getCurrentInstance();
-  const t = proxy ? proxy.$t : (s) => s;
-
   if (isRegistering.value) {
     if (!form.email || !form.password || !form.name || !form.inviteCode) {
       return uni.showToast({ title: t('請填寫完整註冊資訊'), icon: 'none' });
