@@ -132,6 +132,7 @@ export const AuthProvider = ({ children }) => {
             guest: 0,
             user: 1,
             editor: 1.5,
+            admin: 2,
             family_admin: 2,
             super_admin: 3
         };
