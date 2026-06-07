@@ -1,0 +1,36 @@
+﻿
+> app.get('/api/family-trees', (req, res) => {
+      db.all("SELECT * FROM family_trees", [], (err, rows) => {
+          if (err) {
+              res.status(400).json({ "error": err.message });
+              return;
+          }
+          res.json(rows);
+      });
+  });
+  
+  app.post('/api/family-trees', (req, res) => {
+      const { id, name, description, created_by, is_public, password, cover_image } = req.body;
+      const created_at = new Date().toISOString();
+      const updated_at = created_at;
+  
+      const sql = "INSERT INTO family_trees (id, name, description, created_by, created_at, updated_at, is_public, pass
+word, cover_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+      const params = [id, name, description, created_by, created_at, updated_at, is_public ? 1 : 0, password, cover_ima
+ge];
+  
+      db.run(sql, params, function (err) {
+          if (err) {
+              res.status(400).json({ "error": err.message });
+              return;
+          }
+          res.json({
+              "message": "success",
+              "data": req.body,
+              "id": this.lastID
+          });
+      });
+  });
+  
+
+

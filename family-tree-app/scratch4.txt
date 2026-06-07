@@ -1,0 +1,34 @@
+﻿
+> app.get('/api/family', (req, res) => {
+      const { family_tree_id } = req.query;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  
+      let sql = "SELECT * FROM members WHERE is_deleted = 0";
+      const params = [];
+  
+      if (family_tree_id) {
+          // 鉁?鍎寲鏌ヨ锛氬劒鍏堝尮閰嶇储寮曞瓧娈?primaryFamily锛屼甫鏀彺 families 鏁哥祫鍖归厤
+          sql = `
+              SELECT DISTINCT m.* 
+              FROM members m
+              WHERE (m.primaryFamily = ? 
+                 OR EXISTS (SELECT 1 FROM json_each(m.families) WHERE value = ?))
+                 AND m.is_deleted = 0
+          `;
+          params.push(family_tree_id, family_tree_id);
+      }
+  
+      db.all(sql, params, (err, rows) => {
+          if (err) {
+              res.status(400).json({ "error": err.message });
+              return;
+          }
+          const members = rows.map(row => ({
+              ...row,
+              spouses: JSON.parse(row.spouses || "[]"),
+              children: JSON.parse(row.children || "[]"),
+              parents: JSON.parse(row.parents || "[]"),
+              aliases: JSON.parse(row.aliases || "[]"),
+              achievements: JSON.parse(row.achievements || "[]"),
+
+

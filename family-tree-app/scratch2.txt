@@ -1,0 +1,45 @@
+﻿
+          res.status(500).json({ error: error.message });
+      }
+  });
+  
+  // Get all members
+  // Get all members (Supported filtering by family_tree_id)
+  app.get('/api/family', (req, res) => {
+      const { family_tree_id } = req.query;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  
+>     let sql = "SELECT * FROM members WHERE is_deleted = 0";
+      const params = [];
+  
+      if (family_tree_id) {
+          // 鉁?鍎寲鏌ヨ锛氬劒鍏堝尮閰嶇储寮曞瓧娈?primaryFamily锛屼甫鏀彺 families 鏁哥祫鍖归厤
+          sql = `
+              SELECT DISTINCT m.* 
+              FROM members m
+              WHERE (m.primaryFamily = ? 
+                 OR EXISTS (SELECT 1 FROM json_each(m.families) WHERE value = ?))
+                 AND m.is_deleted = 0
+  // Get member detail with biography info
+  // 鍏ㄥ煙鎴愬摗鎼滅储 (鐢ㄦ柤娣诲姞闂滆伅鎴愬摗)
+  app.get('/api/members/search', (req, res) => {
+      const { q, gender } = req.query;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      
+      if (!q || q.length < 1) {
+          return res.json([]);
+      }
+  
+>     let sql = "SELECT * FROM members WHERE is_deleted = 0 AND (name LIKE ? OR id LIKE ?)";
+      const params = [`%${q}%`, `%${q}%`];
+  
+      if (gender) {
+          sql += " AND gender = ?";
+          params.push(gender);
+      }
+  
+      sql += " LIMIT 50";
+  
+      db.all(sql, params, (err, rows) => {
+
+

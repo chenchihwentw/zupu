@@ -37,3 +37,4 @@
     at Function.route (I:\proj\zupu\family-tree-app\node_modules\express\lib\application.js:257:22)
     at app.<computed> [as get] (I:\proj\zupu\family-tree-app\node_modules\express\lib\application.js:478:22)
     at Object.<anonymous> (I:\proj\zupu\family-tree-app\server.cjs:4256:7)
+[2026-06-07T06:29:19.788Z] UNCAUGHT_EXCEPTION: Error: SQLITE_ERROR: no such column: used_storage_kb

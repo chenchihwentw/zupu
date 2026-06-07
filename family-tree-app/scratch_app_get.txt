@@ -1,0 +1,34 @@
+﻿
+app.get('/api/health', (req, res) => {
+app.get('/api/invite/verify', (req, res) => {
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+app.get('/api/family', (req, res) => {
+app.get('/api/admin/snapshots', authenticateToken, (req, res) => {
+app.get('/api/admin/trash', authenticateToken, (req, res) => {
+app.get('/api/admin/logs', authenticateToken, (req, res) => {
+app.get('/api/marriages', (req, res) => {
+app.get('/api/family/:id', (req, res) => {
+app.get('/api/family/:id/manage', authenticateToken, async (req, res) => {
+app.get('/api/family/:id/storage-users', authenticateToken, async (req, res) => {
+app.get('/api/admin/families-usage', authenticateToken, async (req, res) => {
+app.get('/api/admin/users-usage', authenticateToken, async (req, res) => {
+app.get('/api/members/search', (req, res) => {
+app.get('/api/member/:id', (req, res) => {
+app.get('/api/member/:id/biography', (req, res) => {
+app.get('/api/member/:id/image-count', (req, res) => {
+app.get('/api/media', (req, res) => {
+app.get('/api/memorial/rituals/:memberId', (req, res) => {
+app.get('/api/user/storage', authenticateToken, (req, res) => {
+app.get('/api/face-embeddings/:media_id', (req, res) => {
+app.get('/api/face-embeddings/family/:family_id', (req, res) => {
+app.get('/api/family-trees', (req, res) => {
+app.get('/api/users', (req, res) => {
+app.get('/api/user-family-trees/:user_id', (req, res) => {
+app.get('/api/marriages', (req, res) => {
+app.get('/api/health-records/:member_id', (req, res) => {
+app.get('/api/reunion', optionalAuth, async (req, res) => {
+app.get('/api/my-family-tree', authenticateToken, async (req, res) => {
+  app.get('/m/*all', (req, res) => {
+  app.get('*all', (req, res) => {
+
+

@@ -1,0 +1,25 @@
+﻿
+                db.get(`SELECT id, name, family_tree_id FROM members WHERE id = ?`, [invitation.target_member_id], (err
+, row) => {
+                db.get(`SELECT id, name FROM members WHERE id = ?`, [invitation.target_member_id], (err, row) => {
+                db.get(`SELECT user_id FROM members WHERE id = ? AND user_id IS NOT NULL`, [invitation.target_member_id
+], (err, row) => {
+            db.get(`SELECT id as member_id FROM members WHERE user_id = ?`, [user.id], (err, row) => {
+            db.get(`SELECT id as member_id FROM members WHERE user_id = ?`, [userId], (err, row) => {
+    let sql = "SELECT * FROM members WHERE is_deleted = 0";
+    db.get('SELECT * FROM members WHERE id = ?', [req.params.id], (getErr, oldData) => {
+    db.all('SELECT * FROM members WHERE is_deleted = 1 ORDER BY deleted_at DESC', [], (err, rows) => {
+                    db.get("SELECT primaryFamily, families FROM members WHERE id = ?", [mid], (err, row) => {
+    db.get("SELECT * FROM members WHERE id = ?", [memberId], (err, row) => {
+            (SELECT COUNT(*) FROM members WHERE primaryFamily = ft.id OR families LIKE '%' || ft.id || '%') as memberCo
+unt,
+    let sql = "SELECT * FROM members WHERE is_deleted = 0 AND (name LIKE ? OR id LIKE ?)";
+    db.get("SELECT * FROM members WHERE id = ?", [memberId], (err, row) => {
+            db.get("SELECT biography_md, biography_tags FROM members WHERE id = ?", [memberId], (err2, memberRow) => {
+                        db.get("SELECT id FROM members WHERE id = ?", [row.id], (err, result) => {
+        db.get('SELECT primaryFamily, families FROM members WHERE id = ?', [viewMemberId], (err, row) => {
+        db.all('SELECT * FROM members WHERE families LIKE ?', [`%${familyId}%`], (err, rows) => {
+        db.get('SELECT * FROM members WHERE id = ?', [memberId], (err, row) => {
+          db.get('SELECT * FROM members WHERE id = ?', [memberId], (err, row) => {
+
+

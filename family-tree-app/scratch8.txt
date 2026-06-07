@@ -1,0 +1,28 @@
+﻿
+app.post('/api/family/create', async (req, res) => {
+        console.error('[API/Family/Create] 閷:', err);
+app.get('/api/family', (req, res) => {
+app.post('/api/family', (req, res) => {
+            console.error('POST /api/family error:', err.message);
+app.put('/api/family/:id', authenticateToken, (req, res) => {
+app.post('/api/family/:id/revert', authenticateToken, async (req, res) => {
+app.delete('/api/family/:id', authenticateToken, (req, res) => {
+app.get('/api/family/:id', (req, res) => {
+app.get('/api/family/:id/manage', authenticateToken, async (req, res) => {
+        console.error('Error in /api/family/:id/manage:', error);
+app.get('/api/family/:id/storage-users', authenticateToken, async (req, res) => {
+app.put('/api/family/:id/storage-limit', authenticateToken, async (req, res) => {
+// 鏇存柊瀹舵棌鍩烘湰淇℃伅 (瀵︾従 PUT /api/family/:id/info)
+app.put('/api/family/:id/info', authenticateToken, async (req, res) => {
+        console.error('Error in PUT /api/family/:id/info:', error);
+app.put('/api/family/:id/biography', (req, res) => {
+app.post('/api/family/:id/invite-code', authenticateToken, async (req, res) => {
+        console.error('Error in POST /api/family/:id/invite-code:', error);
+app.post('/api/family/:id/privacy', (req, res) => {
+app.get('/api/family-trees', (req, res) => {
+app.post('/api/family-trees', (req, res) => {
+app.post('/api/family/batch-labels/preview', authenticateToken, async (req, res) => {
+app.post('/api/family/batch-labels/execute', authenticateToken, async (req, res) => {
+app.put('/api/family/:id/member-role', authenticateToken, async (req, res) => {
+
+
