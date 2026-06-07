@@ -1512,30 +1512,11 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 
 // Get all members
 // Get all members (Supported filtering by family_tree_id)
-app.get('/api/family', (req, res) => {
+app.get('/api/family', optionalAuth, (req, res) => {
     const { family_tree_id } = req.query;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
-    let sql = "SELECT * FROM members WHERE is_deleted = 0";
-    const params = [];
-
-    if (family_tree_id) {
-        // ✨ 優化查詢：優先匹配索引字段 primaryFamily，並支援 families 數組匹配
-        sql = `
-            SELECT DISTINCT m.* 
-            FROM members m
-            WHERE (m.primaryFamily = ? 
-               OR EXISTS (SELECT 1 FROM json_each(m.families) WHERE value = ?))
-               AND m.is_deleted = 0
-        `;
-        params.push(family_tree_id, family_tree_id);
-    }
-
-    db.all(sql, params, (err, rows) => {
-        if (err) {
-            res.status(400).json({ "error": err.message });
-            return;
-        }
+    function processAndReturnMembers(rows, res) {
         const members = rows.map(row => ({
             ...row,
             spouses: JSON.parse(row.spouses || "[]"),
@@ -1548,12 +1529,80 @@ app.get('/api/family', (req, res) => {
             avatar_url: row.avatar_url || null,
             has_biography: !!row.biography_md,
             tags: JSON.parse(row.biography_tags || '[]'),
-            // ✨ 僅依賴新欄位
             primaryFamily: row.primaryFamily,
             families: JSON.parse(row.families || '[]')
         }));
         res.json(members);
+    }
+
+    if (!family_tree_id) {
+        if (!req.user) {
+            return res.json([]);
+        }
+        if (req.user.id === 'admin') {
+            db.all("SELECT * FROM members WHERE is_deleted = 0", [], (err, rows) => {
+                if (err) return res.status(400).json({ "error": err.message });
+                processAndReturnMembers(rows, res);
+            });
+            return;
+        }
+
+        db.all("SELECT family_tree_id FROM user_family_trees WHERE user_id = ?", [req.user.id], (err, uftRows) => {
+            if (err) return res.status(400).json({ error: err.message });
+            
+            const allowedFamilyIds = uftRows.map(r => r.family_tree_id);
+            if (allowedFamilyIds.length === 0) {
+                return res.json([]);
+            }
+            
+            const orClauses = allowedFamilyIds.map(() => `(m.primaryFamily = ? OR EXISTS (SELECT 1 FROM json_each(m.families) WHERE value = ?))`).join(' OR ');
+            let sql = `
+                SELECT DISTINCT m.* 
+                FROM members m
+                WHERE (${orClauses}) AND m.is_deleted = 0
+            `;
+            const params = [];
+            allowedFamilyIds.forEach(id => { params.push(id, id); });
+            
+            db.all(sql, params, (err, rows) => {
+                if (err) return res.status(400).json({ error: err.message });
+                processAndReturnMembers(rows, res);
+            });
+        });
+        return;
+    }
+
+    db.get("SELECT is_public FROM family_trees WHERE id = ?", [family_tree_id], (err, tree) => {
+        if (err) return res.status(400).json({ error: err.message });
+        if (!tree) return res.status(404).json({ error: "Family tree not found" });
+
+        const isPublic = tree.is_public === 1;
+        
+        if (!isPublic && (!req.user || (req.user.id !== 'admin'))) {
+            if (!req.user) return res.status(403).json({ error: "Access denied" });
+            db.get("SELECT * FROM user_family_trees WHERE user_id = ? AND family_tree_id = ?", [req.user.id, family_tree_id], (err, uft) => {
+                if (err) return res.status(400).json({ error: err.message });
+                if (!uft) return res.status(403).json({ error: "Access denied" });
+                executeFetch(family_tree_id, res);
+            });
+        } else {
+            executeFetch(family_tree_id, res);
+        }
     });
+
+    function executeFetch(fid, res) {
+        let sql = `
+            SELECT DISTINCT m.* 
+            FROM members m
+            WHERE (m.primaryFamily = ? 
+               OR EXISTS (SELECT 1 FROM json_each(m.families) WHERE value = ?))
+               AND m.is_deleted = 0
+        `;
+        db.all(sql, [fid, fid], (err, rows) => {
+            if (err) return res.status(400).json({ error: err.message });
+            processAndReturnMembers(rows, res);
+        });
+    }
 });
 
 // Add a new member
@@ -3306,8 +3355,25 @@ app.delete('/api/face-embeddings/:tag_id', optionalAuth, (req, res) => {
 });
 
 // Family Trees API Endpoints
-app.get('/api/family-trees', (req, res) => {
-    db.all("SELECT * FROM family_trees", [], (err, rows) => {
+app.get('/api/family-trees', optionalAuth, (req, res) => {
+    let sql = "SELECT * FROM family_trees WHERE is_public = 1";
+    const params = [];
+    
+    if (req.user) {
+        if (req.user.id === 'admin') {
+            sql = "SELECT * FROM family_trees";
+        } else {
+            sql = `
+                SELECT DISTINCT ft.* 
+                FROM family_trees ft
+                LEFT JOIN user_family_trees uft ON ft.id = uft.family_tree_id
+                WHERE ft.is_public = 1 OR uft.user_id = ?
+            `;
+            params.push(req.user.id);
+        }
+    }
+    
+    db.all(sql, params, (err, rows) => {
         if (err) {
             res.status(400).json({ "error": err.message });
             return;
